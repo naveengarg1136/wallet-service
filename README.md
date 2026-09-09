@@ -67,7 +67,35 @@ BASE=http://localhost:8000
 curl -s -X POST $BASE/wallets -H "Authorization: Bearer alice"   # -> {id, user_id, balance_paise}
 ```
 
-## Deploy to Railway (free tier, ₹0)
+## Deploy — free tier, ₹0 (Render + Neon, no card required)
+
+Railway's free trial expires, so the recommended zero-cost path is a **Render**
+Docker web service + a free always-on **Neon** Postgres. Neither needs a card.
+
+1. **Neon** (free managed Postgres): sign up at neon.tech (GitHub login) → create a
+   project → copy the connection string
+   (`postgresql://user:pass@ep-xxx.neon.tech/neondb?sslmode=require`).
+2. **Render**: sign up at render.com (GitHub login) → **New → Blueprint** → pick this
+   repo. Render reads [`render.yaml`](render.yaml) and builds the `Dockerfile`.
+   (Or **New → Web Service → Docker** and set the same env vars manually.)
+3. Set env vars on the service:
+   - `DATABASE_URL` = the Neon connection string from step 1
+   - `DB_SSL` = `require`  (Neon mandates TLS; the app strips `sslmode` for asyncpg)
+4. Render injects `PORT`; the container already binds `0.0.0.0:$PORT`, healthcheck
+   `/healthz`. Deploy and copy the public `*.onrender.com` URL.
+5. Verify: `python scripts/burst.py https://<your-app>.onrender.com`.
+
+> Render free web services **sleep after ~15 min idle** (first request cold-starts
+> in ~50s). Before a live demo, hit `/healthz` once to warm it, or keep it warm
+> with a free pinger (UptimeRobot / cron-job.org) on `/healthz`.
+> **Supabase** is an equally-free Postgres alternative to Neon; **Koyeb** is a
+> no-card alternative to Render.
+
+**Logs:** Render → service → **Logs** streams the structured JSON lines (each
+carries a `correlation_id`). Share that link, or a screen recording of the logs
+streaming while `burst.py` runs.
+
+## Deploy to Railway (paid after trial)
 
 1. Push this repo to GitHub (keep real human commit history — no single squashed
    "initial commit").

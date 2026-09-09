@@ -1,0 +1,16 @@
+# Render Blueprint — free Docker web service.
+# Pair with a free Neon/Supabase Postgres and set DATABASE_URL in the dashboard.
+services:
+  - type: web
+    name: wallet-service
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /healthz
+    envVars:
+      - key: DATABASE_URL      # paste your Neon/Supabase connection string (set as secret)
+        sync: false
+      - key: DB_SSL            # managed Postgres endpoints require TLS
+        value: require
+      - key: LOG_LEVEL
+        value: INFO
