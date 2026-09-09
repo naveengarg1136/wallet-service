@@ -5,6 +5,7 @@ always **integer paise**. Correctness (conservation, no-overdraft, exactly-once,
 race-free get-or-create) is enforced in Postgres, not in application memory.
 
 - **Stack:** Python 3.12 · FastAPI · SQLAlchemy (async) · asyncpg · PostgreSQL
+- **Repo:** https://github.com/naveengarg1136/wallet-service
 - **Live URL:** `https://<your-app>.up.railway.app`  ← _fill in after deploy_
 - **Public logs:** `<railway/koyeb logs link or screen recording>` ← _fill in_
 
