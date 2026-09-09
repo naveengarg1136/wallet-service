@@ -86,8 +86,9 @@ metadata and can change on the original transfer after a successful reversal.
 ## Deployment and Cost
 
 Current hosting is a Render free Docker web service plus Neon free managed
-PostgreSQL. `render.yaml` contains the blueprint. Supply `DATABASE_URL` privately
-in Render and set `DB_SSL=require`; never commit the real connection string.
+PostgreSQL. `render.yaml` contains the Singapore replacement blueprint. Render
+copies `DATABASE_URL` from the existing `wallet-service` in the same workspace;
+the secret value never enters Git. The blueprint also sets `DB_SSL=require`.
 URL `sslmode` also enables TLS; the app uses certificate-verified TLS, including
 when a libpq URL only requested encryption. Render provides `PORT` and
 `RENDER_GIT_COMMIT`; GET `/` exposes the revision for deployment verification.
@@ -99,16 +100,29 @@ SQL round trips extend lock hold times and are a latency risk under contention.
 The blueprint pins new services to Singapore. Render does not support changing
 an existing service's region, so this setting does not move the Oregon service.
 
-1. In Render, create a new **Web Service** from this repository's `main` branch.
-2. Select **Docker**, name `wallet-service-sg`, region **Singapore**, and **Free**.
-	Leave Root Directory blank and use Dockerfile path `./Dockerfile`.
-3. Copy the existing `DATABASE_URL` privately in Render; retain `DB_SSL=require`
-	and `LOG_LEVEL=INFO`. Set Health Check Path to `/healthz`.
-4. Deploy the latest tested commit. Verify GET `/` reports that commit and
+1. In the same Render workspace as `wallet-service`, select **New > Blueprint**.
+2. Connect this repository, select branch `main`, and use path `render.yaml`.
+3. Review the plan: `wallet-service-sg`, **Docker**, **Singapore**, **Free**, and
+	`/healthz`. The database URL is inherited, so no environment values need typing.
+	If Render proposes changing the Oregon service or adding paid resources, stop.
+4. Deploy the Blueprint. Verify GET `/` reports the expected tested commit and
 	`/healthz` returns 200 before running the full burst against the new URL.
 5. Use a new evidence directory for each retest; retain the failed capture.
 	Export matching Render logs and update the public API/evidence links only
 	after verification. Suspend the Oregon service after the replacement passes.
+
+The source service must be named exactly `wallet-service`, must exist in the same
+workspace, and must have a valid `DATABASE_URL`. If its name differs, change only
+`fromService.name`. Do not delete it while this Blueprint references it; migrate
+the secret to an environment group before retiring the source permanently.
+Referenced values refresh on Blueprint sync, not immediately on source changes.
+If `wallet-service-sg` already exists, Render attempts to apply this configuration
+to it; its region must already be Singapore. A Blueprint standardizes settings
+but does not fix an unrelated image-build, startup, or database failure.
+
+For a fresh workspace without the original service, replace `fromService` with
+`sync: false` under `DATABASE_URL` and provide the Neon URL once in Render's
+initial Blueprint form. Never put the secret in the YAML or chat.
 
 No database migration or paid database is needed: both services use the existing
 Neon database. They still connect over TLS on the public network, not a shared

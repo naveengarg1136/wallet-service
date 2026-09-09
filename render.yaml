@@ -1,16 +1,19 @@
-# Render Blueprint — free Docker web service.
-# Pair with a free Neon/Supabase Postgres and set DATABASE_URL in the dashboard.
+# Singapore replacement using the existing Render service's Neon secret.
 services:
   - type: web
-    name: wallet-service
+    name: wallet-service-sg
     runtime: docker
+    branch: main
     dockerfilePath: ./Dockerfile
     plan: free
     region: singapore
     healthCheckPath: /healthz
     envVars:
-      - key: DATABASE_URL      # paste your Neon/Supabase connection string (set as secret)
-        sync: false
+      - key: DATABASE_URL
+        fromService:
+          name: wallet-service
+          type: web
+          envVarKey: DATABASE_URL
       - key: DB_SSL            # managed Postgres endpoints require TLS
         value: require
       - key: LOG_LEVEL
