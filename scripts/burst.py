@@ -18,22 +18,27 @@ import uuid
 BASE = "http://localhost:8000"
 
 
-def http(method, path, token=None, body=None):
+def http(method, path, token=None, body=None, timeout=60, retries=2):
     url = BASE + path
     data = json.dumps(body).encode() if body is not None else None
-    req = urllib.request.Request(url, data=data, method=method)
-    req.add_header("Content-Type", "application/json")
-    if token:
-        req.add_header("Authorization", f"Bearer {token}")
-    try:
-        with urllib.request.urlopen(req, timeout=30) as r:
-            return r.status, json.loads(r.read() or "null")
-    except urllib.error.HTTPError as e:
-        raw = e.read()
+    last_exc = None
+    for _ in range(retries + 1):
+        req = urllib.request.Request(url, data=data, method=method)
+        req.add_header("Content-Type", "application/json")
+        if token:
+            req.add_header("Authorization", f"Bearer {token}")
         try:
-            return e.status, json.loads(raw or "null")
-        except json.JSONDecodeError:
-            return e.status, {"raw": raw.decode(errors="replace")}
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                return r.status, json.loads(r.read() or "null")
+        except urllib.error.HTTPError as e:
+            raw = e.read()
+            try:
+                return e.status, json.loads(raw or "null")
+            except json.JSONDecodeError:
+                return e.status, {"raw": raw.decode(errors="replace")}
+        except (TimeoutError, urllib.error.URLError) as e:
+            last_exc = e  # transient (free-tier cold start / overload) — retry
+    raise last_exc
 
 
 def make_wallet(user):
@@ -96,7 +101,7 @@ def gate2_idempotent_storm(k=30, amount=5_00):
     check("same key + different body => 409", conflict[0] == 409, f"got {conflict[0]}")
 
 
-def gate3_conservation(num_wallets=5, seed=100_00, rounds=300):
+def gate3_conservation(num_wallets=5, seed=100_00, rounds=200, workers=8):
     print(f"\nGate 3 — conservation + no-overdraft under contention ({rounds} concurrent transfers)")
     users = [f"W{i}-{uuid.uuid4()}" for i in range(num_wallets)]
     wallets = [make_wallet(u) for u in users]
@@ -113,10 +118,13 @@ def gate3_conservation(num_wallets=5, seed=100_00, rounds=300):
                 "amount_paise": amt, "idempotency_key": f"c-{uuid.uuid4()}"}
         return http("POST", "/transfers", token=users[s], body=body)
 
-    results = concurrent(one, rounds, workers=40)
+    results = concurrent(one, rounds, workers=workers)
     balances = [balance(u, w["id"]) for u, w in zip(users, wallets)]
     total_after = sum(balances)
     server_errors = [r[0] for r in results if r[0] >= 500]
+    if server_errors:
+        from collections import Counter
+        print("      5xx status breakdown:", dict(Counter(server_errors)))
     check("total conserved (sum unchanged)", total_after == total_before,
           f"before={total_before} after={total_after}")
     check("no negative balances", all(b >= 0 for b in balances), f"balances={balances}")

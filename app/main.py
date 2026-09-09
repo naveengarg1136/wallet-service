@@ -67,6 +67,18 @@ async def api_error_handler(_, exc: ApiError):
     )
 
 
+@app.exception_handler(Exception)
+async def unhandled_error_handler(_, exc: Exception):
+    # Log the traceback as a structured event so a 500 is traceable by correlation id.
+    log_event(logger, "request.error", level=logging.ERROR,
+              error_type=type(exc).__name__, error=str(exc))
+    logger.exception("unhandled error")
+    return JSONResponse(
+        status_code=500,
+        content={"error": "internal_error", "correlation_id": correlation_id.get()},
+    )
+
+
 # --------------------------------------------------------------------------- #
 # Auth: a bearer token identifies the caller. The token IS the user id.
 # --------------------------------------------------------------------------- #
