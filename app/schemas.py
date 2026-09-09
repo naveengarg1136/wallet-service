@@ -2,6 +2,8 @@ import uuid
 
 from pydantic import BaseModel, ConfigDict, Field
 
+MAX_PAISE = 2**63 - 1
+
 
 class WalletOut(BaseModel):
     id: str
@@ -14,14 +16,14 @@ class TransferIn(BaseModel):
     # so we alias them and also accept the explicit field names.
     from_wallet: uuid.UUID = Field(alias="from")
     to_wallet: uuid.UUID = Field(alias="to")
-    amount_paise: int = Field(gt=0)
+    amount_paise: int = Field(strict=True, gt=0, le=MAX_PAISE)
     idempotency_key: str = Field(min_length=1, max_length=200)
 
     model_config = ConfigDict(populate_by_name=True)
 
 
 class DepositIn(BaseModel):
-    amount_paise: int = Field(gt=0)
+    amount_paise: int = Field(strict=True, gt=0, le=MAX_PAISE)
     idempotency_key: str = Field(min_length=1, max_length=200)
 
 

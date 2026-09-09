@@ -1,137 +1,141 @@
 # Wallet & P2P Transfer Service
 
-A small, correct-under-load wallet service with peer-to-peer transfers. Money is
-always **integer paise**. Correctness (conservation, no-overdraft, exactly-once,
-race-free get-or-create) is enforced in Postgres, not in application memory.
+FastAPI + SQLAlchemy/asyncpg + PostgreSQL. Money is strictly integer paise;
+transactional database constraints and ordered row locks enforce correctness.
 
-- **Stack:** Python 3.12 · FastAPI · SQLAlchemy (async) · asyncpg · PostgreSQL
-- **Repo:** https://github.com/naveengarg1136/wallet-service
-- **Live URL:** `https://<your-app>.up.railway.app`  ← _fill in after deploy_
-- **Public logs:** `<railway/koyeb logs link or screen recording>` ← _fill in_
+- Live API: https://wallet-service-rxfw.onrender.com
+- Repository: https://github.com/naveengarg1136/wallet-service
+- Public structured log capture: [evidence/local/service.jsonl](evidence/local/service.jsonl)
+- Verification status and metrics: [evidence/README.md](evidence/README.md)
+- CI and streaming-style job logs: https://github.com/naveengarg1136/wallet-service/actions
+- One-page design: [WRITEUP.md](WRITEUP.md)
+
+The checked-in log capture is from the local PostgreSQL validation run, not
+Render production. CI publishes its own sanitized logs and downloadable evidence
+on every run. A private Render dashboard URL is not a public log link.
+
+## Run and Test
+
+```bash
+docker compose up --build
+```
+
+This starts the non-root app on port 8000 and PostgreSQL 16, persisted in a named
+volume. The database port is bound only to localhost. Docker Engine and Compose
+are prerequisites; no cloud credentials are needed.
+
+In a second terminal, from the repository root:
+
+```bash
+python scripts/burst.py http://localhost:8000 --evidence-dir evidence/run
+```
+
+The standard-library harness requires Python 3.9+ and exits nonzero on failure.
+It tests 50 simultaneous wallet creates, 30 same-key transfers, changed-body
+conflicts, 300 transfers with 40 workers across five wallets (including explicit
+opposing transfers), per-wallet ledger reconciliation, no overdraft, reversals,
+strict inputs, ownership, overflow rollback, and deposit replay. There are no
+automatic HTTP retries or filtered-out failing responses. The Bash wrapper
+`bash scripts/burst.sh <url>` invokes the same harness.
+
+Test the deployed service after `/healthz` responds successfully:
+
+```bash
+python scripts/burst.py https://wallet-service-rxfw.onrender.com --evidence-dir evidence/live
+```
+
+For development without Docker, create a virtual environment, install
+`requirements.txt`, provide a PostgreSQL `DATABASE_URL`, then run
+`python -m uvicorn app.main:app`. Environment variables are read from the process;
+`.env.example` is a template, not an automatically loaded credentials file.
+Offline checks: `python -m unittest discover -s tests -v` and
+`python scripts/validate_offline.py`.
 
 ## API
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `POST` | `/wallets` | Get-or-create the caller's wallet (bearer token = user id). |
-| `GET` | `/wallets/{id}` | Current balance. |
-| `POST` | `/wallets/{id}/deposit` | Seed funds (external mint; see note below). |
-| `POST` | `/transfers` | Move money. Body: `from`, `to`, `amount_paise`, `idempotency_key`. |
-| `GET` | `/transfers/{id}` | Transfer status. |
-| `POST` | `/transfers/{id}/reverse` | Reverse a transfer (own `idempotency_key`). |
-| `GET` | `/healthz` | Liveness + DB ping. |
-| `GET` | `/metrics` | Prometheus metrics (rate, latency histogram, domain counters). |
+| POST | `/wallets` | Get or create the caller's single wallet. |
+| GET | `/wallets/{id}` | Owner-only balance read. |
+| POST | `/wallets/{id}/deposit` | Owner-only test funding, an explicit external mint. |
+| POST | `/transfers` | Transfer with `from`, `to`, `amount_paise`, `idempotency_key`. |
+| GET | `/transfers/{id}` | Status visible to either participant. |
+| POST | `/transfers/{id}/reverse` | Original sender requests a reversal with a new key. |
+| GET | `/healthz` | Readiness check including a database ping. |
+| GET | `/metrics` | Prometheus counters and latency histogram. |
+| GET | `/` | Service identity, endpoints, and deployed `revision`. |
 
-**Auth:** `Authorization: Bearer <token>`. The token identifies the caller and is
-treated as their `user_id`. Transfers/deposits require the caller to own the
-`from` wallet. (Auth sophistication is explicitly out of scope for grading.)
+Use `Authorization: Bearer <user-id>`. This is deliberately minimal assessment
+authentication, not verified identity suitable for real money. The deposit
+endpoint is test-only minting; conservation applies to peer transfers and
+reversals without intervening deposits. Never expose this as a production wallet.
 
-**Why a deposit endpoint?** The graded invariant is *conservation across
-transfers*. Wallets still need initial funds to test with. `deposit` is an
-explicit external mint (recorded as `kind='deposit'`, `from_wallet = NULL`) — it
-is deliberately outside the conservation invariant, which governs peer transfers
-and reversals only.
+Money must be a JSON integer from 1 through 9223372036854775807. Strings, booleans,
+floats and out-of-range values return 422. Transfers cannot use the same wallet
+on both sides. New completed **or declined** movements return 201; identical
+replays return 200. Keys are globally unique across all operation kinds. Same key
+with a different operation/body returns 409. An insufficient-funds decline is
+persisted, so funding later does not change that key's result. A balance-limit
+409 rolls back the entire transaction and its key claim. `reversed_by` is current
+metadata and can change on the original transfer after a successful reversal.
 
-## Run locally (one command)
+## Deployment and Cost
 
-```bash
-docker compose up --build
-# app on http://localhost:8000 , Postgres on 5432
+Current hosting is a Render free Docker web service plus Neon free managed
+PostgreSQL. `render.yaml` contains the blueprint. Supply `DATABASE_URL` privately
+in Render and set `DB_SSL=require`; never commit the real connection string.
+URL `sslmode` also enables TLS; the app uses certificate-verified TLS, including
+when a libpq URL only requested encryption. Render provides `PORT` and
+`RENDER_GIT_COMMIT`; GET `/` exposes the revision for deployment verification.
+
+The target spend is INR 0, using only free plans with no paid add-ons selected.
+Render services and Neon compute can sleep; cold starts, quotas, and service
+policies apply. No universal promise is made about card requirements, permanent
+free availability, or future prices. This repository does not verify billing
+dashboards. Railway configuration remains an alternative, not the current host;
+an expired Railway trial must not be treated as free hosting.
+
+## Logs and Metrics
+
+Application events are JSON with UTC millisecond timestamps and correlation IDs.
+Send a bounded `X-Request-ID` (letters, digits, dot, underscore or hyphen); it is
+echoed even on handled internal errors. Wallet creation, deposits, transfers,
+declines, replays and reversals are logged. Money-success events are emitted only
+after commit. Logs and metrics are best-effort observability, not a durable audit
+ledger; the database records are authoritative.
+
+The harness writes request timings/IDs, a summary (rate, client p99 and 5xx/transport
+error rate), and before/after Prometheus snapshots. Expected 401/403/409/422
+responses are checked explicitly but not counted as server errors. Server p99
+uses the histogram, distinct from client timing:
+
+```promql
+sum(rate(http_requests_total[5m]))
+histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))
+sum(rate(http_requests_total{status=~"5.."}[5m])) / sum(rate(http_requests_total[5m]))
 ```
 
-Then reproduce every graded invariant:
+These expressions require a Prometheus-compatible scraper; `/metrics` by itself
+is not a dashboard or historical store. Counters reset on process restart and
+are per-process. No paid metrics backend is required by this implementation.
+
+Capture shareable logs from a run:
 
 ```bash
-python scripts/burst.py http://localhost:8000
+docker compose logs --no-color --no-log-prefix app > app.log
+python scripts/export_logs.py app.log evidence/run
 ```
 
-Expected tail: `All invariants held.` (exit 0). The script covers race-free
-get-or-create (50 concurrent), the idempotency storm (30 concurrent same key),
-conservation + no-overdraft under contention (300 concurrent incl. A→B and B→A),
-same-key/different-body → 409, and the R3 reversal (concurrent same-key = one
-refund, already-reversed = 409).
+The exporter includes only that run's correlation IDs and allowlisted event
+fields, excludes credentials/arbitrary exception text, and fails when any
+request lacks a matching access log. Never publish the unfiltered input log.
+CI prints sanitized logs in **Publish sanitized service logs** and retains the
+evidence artifact for 30 days; checked-in evidence does not depend on retention.
 
-### Run without Docker
+## Container and CI
 
-```bash
-python -m venv .venv && . .venv/Scripts/activate   # (Windows: .venv\Scripts\Activate.ps1)
-pip install -r requirements.txt
-# point DATABASE_URL at any Postgres, then:
-uvicorn app.main:app --reload
-```
-
-## Quick manual smoke
-
-```bash
-BASE=http://localhost:8000
-curl -s -X POST $BASE/wallets -H "Authorization: Bearer alice"   # -> {id, user_id, balance_paise}
-```
-
-## Deploy — free tier, ₹0 (Render + Neon, no card required)
-
-Railway's free trial expires, so the recommended zero-cost path is a **Render**
-Docker web service + a free always-on **Neon** Postgres. Neither needs a card.
-
-1. **Neon** (free managed Postgres): sign up at neon.tech (GitHub login) → create a
-   project → copy the connection string
-   (`postgresql://user:pass@ep-xxx.neon.tech/neondb?sslmode=require`).
-2. **Render**: sign up at render.com (GitHub login) → **New → Blueprint** → pick this
-   repo. Render reads [`render.yaml`](render.yaml) and builds the `Dockerfile`.
-   (Or **New → Web Service → Docker** and set the same env vars manually.)
-3. Set env vars on the service:
-   - `DATABASE_URL` = the Neon connection string from step 1
-   - `DB_SSL` = `require`  (Neon mandates TLS; the app strips `sslmode` for asyncpg)
-4. Render injects `PORT`; the container already binds `0.0.0.0:$PORT`, healthcheck
-   `/healthz`. Deploy and copy the public `*.onrender.com` URL.
-5. Verify: `python scripts/burst.py https://<your-app>.onrender.com`.
-
-> Render free web services **sleep after ~15 min idle** (first request cold-starts
-> in ~50s). Before a live demo, hit `/healthz` once to warm it, or keep it warm
-> with a free pinger (UptimeRobot / cron-job.org) on `/healthz`.
-> **Supabase** is an equally-free Postgres alternative to Neon; **Koyeb** is a
-> no-card alternative to Render.
-
-**Logs:** Render → service → **Logs** streams the structured JSON lines (each
-carries a `correlation_id`). Share that link, or a screen recording of the logs
-streaming while `burst.py` runs.
-
-## Deploy to Railway (paid after trial)
-
-1. Push this repo to GitHub (keep real human commit history — no single squashed
-   "initial commit").
-2. In Railway: **New Project → Deploy from GitHub repo** → pick this repo. Railway
-   reads `railway.json` and builds the `Dockerfile`.
-3. **New → Database → PostgreSQL** in the same project.
-4. On the app service **Variables**, add a reference to the DB URL:
-   - `DATABASE_URL = ${{Postgres.DATABASE_URL}}` (Railway substitutes the private URL)
-   - If you instead use a **public** Postgres URL, also set `DB_SSL=require`.
-5. Railway injects `PORT`; the container already binds `0.0.0.0:$PORT`.
-   Healthcheck path `/healthz` is configured in `railway.json`.
-6. Generate a public domain (service → **Settings → Networking → Generate Domain**)
-   and put it at the top of this README.
-7. Verify: `python scripts/burst.py https://<your-app>.up.railway.app`.
-
-**Logs:** Railway → service → **Deploy Logs / Observability** stream the
-structured JSON lines (each carries a `correlation_id`). Share that link, or a
-screen recording of the logs streaming while `burst.py` runs.
-
-## Observability
-
-- **Structured JSON logs** with a per-request `correlation_id` (also echoed as the
-  `x-request-id` response header). Domain events: `wallet.created`,
-  `deposit.applied`, `transfer.debited`, `transfer.credited`, `transfer.created`,
-  `transfer.declined`, `transfer.idempotent_replay`, `reversal.created`,
-  `reversal.declined`, plus `http.access` per request.
-- **Metrics** at `/metrics`: `http_requests_total`,
-  `http_request_duration_seconds` (histogram → p99 via
-  `histogram_quantile(0.99, ...)`), and domain counters
-  `transfers_created_total`, `transfers_declined_insufficient_funds_total`,
-  `idempotent_replays_total`, `reversals_created_total`, `wallets_created_total`,
-  `deposits_total`.
-
-## Container hygiene
-
-Multi-stage build, runs as non-root (`appuser`, uid 10001), `HEALTHCHECK` that
-pings `/healthz`, no build toolchain in the runtime image.
-
-See [WRITEUP.md](WRITEUP.md) for the data model and design reasoning.
+The Dockerfile is multi-stage, uses uid 10001, has a DB-backed `HEALTHCHECK`, and
+executes Uvicorn directly for shutdown signals. CI builds Compose from a fresh
+checkout, waits for readiness, runs unit regressions and the burst, exports logs
+and metrics, and tears down the database. CI is the container validation gate;
+local portable-PostgreSQL results alone do not prove the image or deployment.

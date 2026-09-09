@@ -1,0 +1,58 @@
+# HELP python_gc_objects_collected_total Objects collected during gc
+# TYPE python_gc_objects_collected_total counter
+python_gc_objects_collected_total{generation="0"} 4239.0
+python_gc_objects_collected_total{generation="1"} 797.0
+python_gc_objects_collected_total{generation="2"} 0.0
+# HELP python_gc_objects_uncollectable_total Uncollectable objects found during GC
+# TYPE python_gc_objects_uncollectable_total counter
+python_gc_objects_uncollectable_total{generation="0"} 0.0
+python_gc_objects_uncollectable_total{generation="1"} 0.0
+python_gc_objects_uncollectable_total{generation="2"} 0.0
+# HELP python_gc_collections_total Number of times this generation was collected
+# TYPE python_gc_collections_total counter
+python_gc_collections_total{generation="0"} 74.0
+python_gc_collections_total{generation="1"} 6.0
+python_gc_collections_total{generation="2"} 0.0
+# HELP python_info Python platform information
+# TYPE python_info gauge
+python_info{implementation="CPython",major="3",minor="13",patchlevel="15",version="3.13.15"} 1.0
+# HELP http_requests_total Total HTTP requests
+# TYPE http_requests_total counter
+# HELP http_request_duration_seconds HTTP request latency in seconds
+# TYPE http_request_duration_seconds histogram
+# HELP wallets_created_total Wallets newly created
+# TYPE wallets_created_total counter
+wallets_created_total 0.0
+# HELP wallets_created_created Wallets newly created
+# TYPE wallets_created_created gauge
+wallets_created_created 1.7889543496230788e+09
+# HELP deposits_total Deposits (external mint) applied
+# TYPE deposits_total counter
+deposits_total 0.0
+# HELP deposits_created Deposits (external mint) applied
+# TYPE deposits_created gauge
+deposits_created 1.7889543496230905e+09
+# HELP transfers_created_total Transfers completed
+# TYPE transfers_created_total counter
+transfers_created_total 0.0
+# HELP transfers_created_created Transfers completed
+# TYPE transfers_created_created gauge
+transfers_created_created 1.7889543496230981e+09
+# HELP transfers_declined_insufficient_funds_total Transfers/reversals declined for insufficient funds
+# TYPE transfers_declined_insufficient_funds_total counter
+transfers_declined_insufficient_funds_total 0.0
+# HELP transfers_declined_insufficient_funds_created Transfers/reversals declined for insufficient funds
+# TYPE transfers_declined_insufficient_funds_created gauge
+transfers_declined_insufficient_funds_created 1.788954349623104e+09
+# HELP idempotent_replays_total Idempotent replays served from the stored result
+# TYPE idempotent_replays_total counter
+idempotent_replays_total 0.0
+# HELP idempotent_replays_created Idempotent replays served from the stored result
+# TYPE idempotent_replays_created gauge
+idempotent_replays_created 1.7889543496231093e+09
+# HELP reversals_created_total Reversals completed
+# TYPE reversals_created_total counter
+reversals_created_total 0.0
+# HELP reversals_created_created Reversals completed
+# TYPE reversals_created_created gauge
+reversals_created_created 1.7889543496231139e+09

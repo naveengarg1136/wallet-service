@@ -5,8 +5,8 @@ a duplicate can never wedge itself between the check and the write (no TOCTOU).
 Correctness mechanism (deliberately the simplest that is correct):
   * Debit  = `UPDATE wallets SET balance = balance - amt WHERE id = ? AND balance >= amt`.
              Rows-affected 0 => decline (no partial apply, no negative balance).
-             This is a single row lock, so A->B and B->A can never deadlock on
-             two rows in opposite order — there is only ever one debited row.
+             Both wallets are locked in UUID order before any balance update.
+             NO KEY UPDATE remains compatible with foreign-key KEY SHARE locks.
   * Exactly-once = `INSERT ... ON CONFLICT (idempotency_key) DO NOTHING` in the
              SAME transaction as the debit/credit. Loser of the race re-selects
              the committed transfer and returns it. Same key + different body => 409.
@@ -21,6 +21,7 @@ from sqlalchemy import text
 from . import metrics
 from .db import engine
 from .logging_conf import log_event
+from .schemas import MAX_PAISE
 
 logger = logging.getLogger("wallet")
 
@@ -89,11 +90,11 @@ async def get_or_create_wallet(user_id: str) -> dict:
             ).mappings().first()
     if created:
         metrics.wallets_created_total.inc()
-        log_event(logger, "wallet.created", wallet_id=str(row["id"]), user_id=user_id)
+        log_event(logger, "wallet.created", wallet_id=str(row["id"]))
     return _wallet_dict(row)
 
 
-async def get_wallet(wallet_id: uuid.UUID) -> dict:
+async def get_wallet(caller: str, wallet_id: uuid.UUID) -> dict:
     async with engine.connect() as conn:
         row = (
             await conn.execute(
@@ -103,6 +104,8 @@ async def get_wallet(wallet_id: uuid.UUID) -> dict:
         ).mappings().first()
     if not row:
         raise ApiError(404, "wallet_not_found", "wallet not found")
+    if row["user_id"] != caller:
+        raise ApiError(403, "forbidden", "caller does not own this wallet")
     return _wallet_dict(row)
 
 
@@ -150,10 +153,17 @@ async def deposit(caller: str, wallet_id: uuid.UUID, amount: int, idem_key: str)
             log_event(logger, "deposit.idempotent_replay", transfer_id=str(existing["id"]))
             return _transfer_dict(existing), False
 
-        await conn.execute(
-            text("UPDATE wallets SET balance_paise = balance_paise + :amt, updated_at = now() WHERE id = :id"),
-            {"amt": amount, "id": wallet_id},
-        )
+        credited = (
+            await conn.execute(
+                text(
+                    "UPDATE wallets SET balance_paise = balance_paise + :amt, updated_at = now() "
+                    "WHERE id = :id AND balance_paise <= :remaining RETURNING id"
+                ),
+                {"amt": amount, "id": wallet_id, "remaining": MAX_PAISE - amount},
+            )
+        ).first()
+        if credited is None:
+            raise ApiError(409, "balance_limit_exceeded", "wallet balance would exceed the supported limit")
         await conn.execute(
             text("UPDATE transfers SET status = 'completed' WHERE id = :id"), {"id": dep_id}
         )
@@ -168,6 +178,42 @@ async def deposit(caller: str, wallet_id: uuid.UUID, amount: int, idem_key: str)
 # --------------------------------------------------------------------------- #
 # Transfer
 # --------------------------------------------------------------------------- #
+async def _lock_wallets(conn, first_id: uuid.UUID, second_id: uuid.UUID):
+    return (
+        await conn.execute(
+            text(
+                "SELECT id, balance_paise FROM wallets WHERE id IN (:first, :second) "
+                "ORDER BY id FOR NO KEY UPDATE"
+            ),
+            {"first": first_id, "second": second_id},
+        )
+    ).mappings().all()
+
+
+async def _move_money(conn, from_id: uuid.UUID, to_id: uuid.UUID, amount: int) -> bool:
+    wallets = {row["id"]: row["balance_paise"] for row in await _lock_wallets(conn, from_id, to_id)}
+    if wallets[from_id] < amount:
+        return False
+    if wallets[to_id] > MAX_PAISE - amount:
+        raise ApiError(409, "balance_limit_exceeded", "recipient balance would exceed the supported limit")
+    debited = (
+        await conn.execute(
+            text(
+                "UPDATE wallets SET balance_paise = balance_paise - :amt, updated_at = now() "
+                "WHERE id = :id AND balance_paise >= :amt RETURNING id"
+            ),
+            {"amt": amount, "id": from_id},
+        )
+    ).first()
+    if debited is None:
+        return False
+    await conn.execute(
+        text("UPDATE wallets SET balance_paise = balance_paise + :amt, updated_at = now() WHERE id = :id"),
+        {"amt": amount, "id": to_id},
+    )
+    return True
+
+
 async def create_transfer(caller: str, from_id: uuid.UUID, to_id: uuid.UUID, amount: int, idem_key: str):
     if from_id == to_id:
         raise ApiError(422, "same_wallet", "from and to wallets must differ")
@@ -220,64 +266,48 @@ async def create_transfer(caller: str, from_id: uuid.UUID, to_id: uuid.UUID, amo
                       idempotency_key=idem_key)
             return _transfer_dict(existing), False
 
-        # (2) Atomic conditional debit — the whole correctness story in one statement.
-        debited = (
-            await conn.execute(
-                text(
-                    """
-                    UPDATE wallets SET balance_paise = balance_paise - :amt, updated_at = now()
-                    WHERE id = :f AND balance_paise >= :amt
-                    RETURNING id
-                    """
-                ),
-                {"amt": amount, "f": from_id},
-            )
-        ).first()
-        if debited is None:
-            await conn.execute(
-                text(
-                    "UPDATE transfers SET status = 'declined', decline_reason = 'insufficient_funds' "
-                    "WHERE id = :id"
-                ),
-                {"id": transfer_id},
-            )
-            row = (
-                await conn.execute(text("SELECT * FROM transfers WHERE id = :id"), {"id": transfer_id})
-            ).mappings().first()
-            metrics.transfers_declined_insufficient_funds_total.inc()
-            log_event(logger, "transfer.declined", transfer_id=str(transfer_id),
-                      reason="insufficient_funds", from_wallet=str(from_id), amount_paise=amount)
-            return _transfer_dict(row), True
-
-        log_event(logger, "transfer.debited", transfer_id=str(transfer_id),
-                  from_wallet=str(from_id), amount_paise=amount)
-        # (3) Credit + finalize, still the same transaction.
+        completed = await _move_money(conn, from_id, to_id, amount)
         await conn.execute(
-            text("UPDATE wallets SET balance_paise = balance_paise + :amt, updated_at = now() WHERE id = :t"),
-            {"amt": amount, "t": to_id},
-        )
-        log_event(logger, "transfer.credited", transfer_id=str(transfer_id),
-                  to_wallet=str(to_id), amount_paise=amount)
-        await conn.execute(
-            text("UPDATE transfers SET status = 'completed' WHERE id = :id"), {"id": transfer_id}
+            text("UPDATE transfers SET status = :status, decline_reason = :reason WHERE id = :id"),
+            {"id": transfer_id, "status": "completed" if completed else "declined",
+             "reason": None if completed else "insufficient_funds"},
         )
         row = (
             await conn.execute(text("SELECT * FROM transfers WHERE id = :id"), {"id": transfer_id})
         ).mappings().first()
 
-    metrics.transfers_created_total.inc()
-    log_event(logger, "transfer.created", transfer_id=str(transfer_id),
-              from_wallet=str(from_id), to_wallet=str(to_id), amount_paise=amount, status="completed")
+    if completed:
+        metrics.transfers_created_total.inc()
+        log_event(logger, "transfer.debited", transfer_id=str(transfer_id),
+                  from_wallet=str(from_id), amount_paise=amount)
+        log_event(logger, "transfer.credited", transfer_id=str(transfer_id),
+                  to_wallet=str(to_id), amount_paise=amount)
+        log_event(logger, "transfer.created", transfer_id=str(transfer_id),
+                  from_wallet=str(from_id), to_wallet=str(to_id), amount_paise=amount, status="completed")
+    else:
+        metrics.transfers_declined_insufficient_funds_total.inc()
+        log_event(logger, "transfer.declined", transfer_id=str(transfer_id),
+                  reason="insufficient_funds", from_wallet=str(from_id), amount_paise=amount)
     return _transfer_dict(row), True
 
 
-async def get_transfer(transfer_id: uuid.UUID) -> dict:
+async def get_transfer(caller: str, transfer_id: uuid.UUID) -> dict:
     async with engine.connect() as conn:
         row = (
-            await conn.execute(text("SELECT * FROM transfers WHERE id = :id"), {"id": transfer_id})
+            await conn.execute(
+                text(
+                    "SELECT transfers.*, EXISTS (SELECT 1 FROM wallets "
+                    "WHERE wallets.id IN (transfers.from_wallet, transfers.to_wallet) "
+                    "AND wallets.user_id = :caller) AS permitted "
+                    "FROM transfers WHERE transfers.id = :id"
+                ),
+                {"id": transfer_id, "caller": caller},
+            )
         ).mappings().first()
     if not row:
         raise ApiError(404, "transfer_not_found", "transfer not found")
+    if not row["permitted"]:
+        raise ApiError(403, "forbidden", "caller is not a participant in this transfer")
     return _transfer_dict(row)
 
 
@@ -352,51 +382,27 @@ async def reverse_transfer(caller: str, original_id: uuid.UUID, idem_key: str):
         if orig["reversed_by"] is not None:
             raise ApiError(409, "already_reversed", "transfer has already been reversed")
 
-        # Same atomic conditional debit, now against the recipient.
-        debited = (
+        completed = await _move_money(conn, orig["to_wallet"], orig["from_wallet"], orig["amount_paise"])
+        await conn.execute(
+            text("UPDATE transfers SET status = :status, decline_reason = :reason WHERE id = :id"),
+            {"id": reversal_id, "status": "completed" if completed else "declined",
+             "reason": None if completed else "recipient_insufficient_funds"},
+        )
+        if completed:
             await conn.execute(
-                text(
-                    """
-                    UPDATE wallets SET balance_paise = balance_paise - :amt, updated_at = now()
-                    WHERE id = :r AND balance_paise >= :amt
-                    RETURNING id
-                    """
-                ),
-                {"amt": orig["amount_paise"], "r": orig["to_wallet"]},
+                text("UPDATE transfers SET reversed_by = :rev WHERE id = :orig"),
+                {"rev": reversal_id, "orig": original_id},
             )
-        ).first()
-        if debited is None:
-            await conn.execute(
-                text(
-                    "UPDATE transfers SET status = 'declined', "
-                    "decline_reason = 'recipient_insufficient_funds' WHERE id = :id"
-                ),
-                {"id": reversal_id},
-            )
-            row = (
-                await conn.execute(text("SELECT * FROM transfers WHERE id = :id"), {"id": reversal_id})
-            ).mappings().first()
-            metrics.transfers_declined_insufficient_funds_total.inc()
-            log_event(logger, "reversal.declined", transfer_id=str(reversal_id),
-                      reason="recipient_insufficient_funds", reverses=str(original_id))
-            return _transfer_dict(row), True
-
-        await conn.execute(
-            text("UPDATE wallets SET balance_paise = balance_paise + :amt, updated_at = now() WHERE id = :s"),
-            {"amt": orig["amount_paise"], "s": orig["from_wallet"]},
-        )
-        await conn.execute(
-            text("UPDATE transfers SET status = 'completed' WHERE id = :id"), {"id": reversal_id}
-        )
-        await conn.execute(
-            text("UPDATE transfers SET reversed_by = :rev WHERE id = :orig"),
-            {"rev": reversal_id, "orig": original_id},
-        )
         row = (
             await conn.execute(text("SELECT * FROM transfers WHERE id = :id"), {"id": reversal_id})
         ).mappings().first()
 
-    metrics.reversals_created_total.inc()
-    log_event(logger, "reversal.created", transfer_id=str(reversal_id),
-              reverses=str(original_id), amount_paise=orig["amount_paise"])
+    if completed:
+        metrics.reversals_created_total.inc()
+        log_event(logger, "reversal.created", transfer_id=str(reversal_id),
+                  reverses=str(original_id), amount_paise=orig["amount_paise"])
+    else:
+        metrics.transfers_declined_insufficient_funds_total.inc()
+        log_event(logger, "reversal.declined", transfer_id=str(reversal_id),
+                  reason="recipient_insufficient_funds", reverses=str(original_id))
     return _transfer_dict(row), True

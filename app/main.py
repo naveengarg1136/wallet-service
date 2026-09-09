@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI, Header, HTTPException, Response
 from fastapi.responses import JSONResponse
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+from sqlalchemy.exc import InterfaceError, OperationalError, TimeoutError as PoolTimeoutError
 
 from . import metrics, store
 from .config import settings
@@ -16,14 +17,14 @@ from .schemas import DepositIn, ReverseIn, TransferIn
 from .store import ApiError
 
 logger = logging.getLogger("wallet")
-_UUID_IN_PATH = re.compile(r"/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
+_REQUEST_ID = re.compile(r"[A-Za-z0-9._-]{1,100}")
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     configure_logging(settings.log_level)
     await run_migrations()
-    log_event(logger, "service.started")
+    log_event(logger, "service.started", revision=settings.revision)
     yield
     await engine.dispose()
 
@@ -36,24 +37,31 @@ app = FastAPI(title="Wallet & P2P Transfer", version="1.0.0", lifespan=lifespan)
 # --------------------------------------------------------------------------- #
 @app.middleware("http")
 async def observability(request, call_next):
-    cid = request.headers.get("x-request-id") or uuid.uuid4().hex
+    supplied_id = request.headers.get("x-request-id", "")
+    cid = supplied_id if _REQUEST_ID.fullmatch(supplied_id) else uuid.uuid4().hex
     token = correlation_id.set(cid)
-    path_label = _UUID_IN_PATH.sub("/{id}", request.url.path)
+    request.state.correlation_id = cid
     start = time.perf_counter()
     status = 500
     try:
-        response = await call_next(request)
+        try:
+            response = await call_next(request)
+        except Exception as exc:
+            response = await unhandled_error_handler(request, exc)
         status = response.status_code
         response.headers["x-request-id"] = cid
         return response
     finally:
         elapsed = time.perf_counter() - start
+        route = request.scope.get("route")
+        path_label = getattr(route, "path", "unmatched")
+        method_label = request.method if request.method in {"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"} else "OTHER"
         if path_label != "/metrics":
-            metrics.http_requests_total.labels(request.method, path_label, str(status)).inc()
-            metrics.http_request_duration_seconds.labels(request.method, path_label).observe(elapsed)
+            metrics.http_requests_total.labels(method_label, path_label, str(status)).inc()
+            metrics.http_request_duration_seconds.labels(method_label, path_label).observe(elapsed)
             log_event(
                 logger, "http.access",
-                method=request.method, path=path_label, status=status,
+                method=method_label, path=path_label, status=status,
                 latency_ms=round(elapsed * 1000, 2),
             )
         correlation_id.reset(token)
@@ -68,14 +76,16 @@ async def api_error_handler(_, exc: ApiError):
 
 
 @app.exception_handler(Exception)
-async def unhandled_error_handler(_, exc: Exception):
-    # Log the traceback as a structured event so a 500 is traceable by correlation id.
+async def unhandled_error_handler(request, exc: Exception):
+    unavailable = isinstance(exc, (OperationalError, InterfaceError, PoolTimeoutError, OSError))
+    status = 503 if unavailable else 500
+    cid = getattr(request.state, "correlation_id", correlation_id.get())
     log_event(logger, "request.error", level=logging.ERROR,
-              error_type=type(exc).__name__, error=str(exc))
-    logger.exception("unhandled error")
+              error_type=type(exc).__name__, status=status, correlation_id=cid)
     return JSONResponse(
-        status_code=500,
-        content={"error": "internal_error", "correlation_id": correlation_id.get()},
+        status_code=status,
+        content={"error": "database_unavailable" if unavailable else "internal_error", "correlation_id": cid},
+        headers={"x-request-id": cid},
     )
 
 
@@ -98,6 +108,7 @@ async def require_user(authorization: str = Header(default="")) -> str:
 async def root():
     return {
         "service": "wallet-p2p-transfer",
+        "revision": settings.revision,
         "endpoints": ["/wallets", "/wallets/{id}", "/transfers", "/transfers/{id}",
                       "/transfers/{id}/reverse", "/wallets/{id}/deposit", "/healthz", "/metrics"],
     }
@@ -123,8 +134,8 @@ async def post_wallet(user: str = Depends(require_user)):
 
 
 @app.get("/wallets/{wallet_id}")
-async def get_wallet(wallet_id: uuid.UUID, _: str = Depends(require_user)):
-    return await store.get_wallet(wallet_id)
+async def get_wallet(wallet_id: uuid.UUID, user: str = Depends(require_user)):
+    return await store.get_wallet(user, wallet_id)
 
 
 @app.post("/wallets/{wallet_id}/deposit")
@@ -145,8 +156,8 @@ async def post_transfer(body: TransferIn, response: Response, user: str = Depend
 
 
 @app.get("/transfers/{transfer_id}")
-async def get_transfer(transfer_id: uuid.UUID, _: str = Depends(require_user)):
-    return await store.get_transfer(transfer_id)
+async def get_transfer(transfer_id: uuid.UUID, user: str = Depends(require_user)):
+    return await store.get_transfer(user, transfer_id)
 
 
 @app.post("/transfers/{transfer_id}/reverse")

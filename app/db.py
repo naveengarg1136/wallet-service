@@ -6,11 +6,8 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from .config import settings
 
-# Neon's pooled endpoint (and any PgBouncer in transaction mode) is incompatible
-# with asyncpg's default server-side prepared-statement cache: cached statements
-# leak across pooled backends and collide under concurrency, surfacing as 500s.
-# Disabling the caches and giving every prepared statement a unique name makes us
-# safe behind PgBouncer while remaining correct on a plain Postgres too.
+# Retain the pooled-endpoint compatibility configuration. Transaction lock order,
+# not prepared-statement caching, resolved the reproduced contention deadlocks.
 _connect_args = {
     "statement_cache_size": 0,
     "prepared_statement_cache_size": 0,

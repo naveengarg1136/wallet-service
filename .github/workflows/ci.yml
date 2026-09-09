@@ -4,9 +4,19 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
 jobs:
   invariants:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      APP_REVISION: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v4
 
@@ -21,12 +31,36 @@ jobs:
           done
           echo "service did not become healthy" && exit 1
 
-      - name: Reproduce all invariants (burst)
-        run: python3 scripts/burst.py http://localhost:8000
+      - name: Unit regressions and shell syntax
+        run: |
+          bash -n scripts/burst.sh
+          docker compose cp tests app:/tmp/tests
+          docker compose cp scripts app:/tmp/scripts
+          docker compose exec -T -e PYTHONPATH=/app:/tmp app python -m unittest discover -s /tmp/tests -v
 
-      - name: Dump logs on failure
-        if: failure()
-        run: docker compose logs
+      - name: Reproduce all invariants (burst)
+        run: |
+          mkdir -p evidence/ci
+          python3 scripts/burst.py http://localhost:8000 --evidence-dir evidence/ci | tee evidence/ci/burst.txt
+
+      - name: Publish sanitized service logs
+        if: always()
+        run: |
+          docker compose logs --no-color --no-log-prefix app > "$RUNNER_TEMP/wallet-app.log"
+          if test -f evidence/ci/summary.json; then
+            python3 scripts/export_logs.py "$RUNNER_TEMP/wallet-app.log" evidence/ci
+            cat evidence/ci/service.jsonl
+          else
+            echo "No burst summary: inspect the build, health and unit test steps."
+          fi
+
+      - name: Upload assessment evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wallet-assessment-${{ github.sha }}
+          path: evidence/ci/
+          retention-days: 30
 
       - name: Tear down
         if: always()

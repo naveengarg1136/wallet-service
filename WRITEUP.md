@@ -1,104 +1,81 @@
-# Wallet & P2P Transfer — Design Write-up (one page)
+# Wallet & P2P Transfer: Design Write-up
 
-## Data model
+## Model and Money
 
-Two tables. Money is `BIGINT` paise everywhere; there is no float or decimal in
-the schema or the code.
+`wallets` has a UUID primary key, unique `user_id`, BIGINT `balance_paise` with a
+nonnegative check, and timestamps. `transfers` stores the UUID, globally unique
+idempotency key, source/destination foreign keys, positive BIGINT amount, request
+hash, kind, status, decline reason, and reversal links. It is both movement
+history and the idempotency store. Deposits explicitly mint test funds and are
+outside transfer/reversal conservation. Inputs are strict positive JSON integers;
+credits also check the remaining BIGINT capacity.
 
-- **wallets** — `id (uuid pk)`, `user_id (text, UNIQUE)`,
-  `balance_paise (bigint, CHECK >= 0)`, timestamps.
-  The `UNIQUE(user_id)` constraint is what makes get-or-create race-free; the
-  `CHECK (balance_paise >= 0)` is a database-level backstop against overdraft.
-- **transfers** — one row per money movement (`kind` ∈ `transfer | reversal |
-  deposit`): `id`, `idempotency_key (text, UNIQUE)`, `from_wallet (uuid, NULL for
-  deposits)`, `to_wallet`, `amount_paise (CHECK > 0)`, `status (pending |
-  completed | declined)`, `reversal_of`, `reversed_by`, `request_hash`,
-  `decline_reason`. It is both the ledger and the idempotency store, so
-  uniqueness and the balance change commit in the *same* transaction.
+## Simplest Correct Concurrency
 
-## The simplest-correct mechanism for conservation + no-overdraft
+Get-or-create uses `INSERT ... ON CONFLICT (user_id) DO NOTHING` and reselects the
+winner. A transfer first claims its idempotency key, then locks both wallet rows
+with `ORDER BY id FOR NO KEY UPDATE`. Every peer movement, including reversal,
+uses this same UUID order. Under those locks, a conditional debit requires
+`balance_paise >= amount`; the credit and final movement status commit in the
+same PostgreSQL transaction. Failures roll back all changes. No in-memory lock
+or read-modify-write balance calculation is used.
 
-An **atomic conditional debit**:
+The original implementation incorrectly assumed that a conditional debit locked
+only one row. The subsequent credit locks the other row too, and CI reproduced
+opposing-direction deadlocks. Ordered two-wallet locking is the correction, not
+an unnecessary alternative. `NO KEY UPDATE` is deliberate: it conflicts with
+other balance writers but remains compatible with foreign-key `KEY SHARE`
+locks acquired by movement inserts, avoiding a key-share-to-update lock cycle.
 
-```sql
-UPDATE wallets SET balance_paise = balance_paise - :amt
-WHERE id = :from AND balance_paise >= :amt
-RETURNING id;
-```
+Rejected heavier alternatives are global/advisory serialization of all transfers
+(unnecessarily limits unrelated wallet pairs), distributed locks (extra failure
+modes and infrastructure), and blanket SERIALIZABLE isolation (adds retryable
+serialization failures). READ COMMITTED plus database uniqueness, ordered row
+locks, and atomic balance updates suffices for the demonstrated invariants.
 
-Rows-affected `0` ⇒ the wallet couldn't cover it ⇒ the transfer is **declined**
-with no partial apply and no negative balance. Rows-affected `1` ⇒ credit the
-recipient and mark completed. The `UPDATE` takes and re-evaluates the row lock
-atomically, so there is no read-modify-write window and therefore no lost update
-— conservation holds under any concurrency.
+## Idempotency and Reversal
 
-**Why it's the simplest correct thing, and deadlock-free:** it debits exactly
-**one** row per transfer. `A→B` and `B→A` firing simultaneously never grab two
-rows in opposite orders, so the classic two-row deadlock cannot occur — there is
-nothing to order. The credit is an unconditional `+` on the other row and can't
-fail the balance test.
+`INSERT ... ON CONFLICT (idempotency_key) DO NOTHING RETURNING id` happens in the
+same transaction as the movement. Concurrent losers wait for the winner and read
+its committed result. A stored canonical body hash rejects changed-body/key reuse
+with 409. Committed insufficient-funds declines are replayed too; a transaction
+that rolls back leaves no key claim. Replays return 200 versus 201 for a new
+record. The original transfer's `reversed_by` remains mutable status metadata.
 
-**Heavier alternatives I rejected:**
-- **`SELECT … FOR UPDATE` on both wallets** — correct only with a *deterministic
-  sorted lock order* (lock lower `id` first) to avoid the A→B/B→A deadlock. It's
-  two row locks and more code to get a result the single conditional `UPDATE`
-  already gives for free. Rejected as unnecessary here. (The reversal path *does*
-  use one `FOR UPDATE` — on the original transfer row — purely to serialize two
-  different-key reversals of the same transfer, not for the balance math.)
-- **`SERIALIZABLE` isolation everywhere** — correct but pushes cost onto the app:
-  every contended transfer risks a `40001` serialization failure and needs a
-  retry loop. Cargo-culting "serializable for safety" would add latency and
-  retry complexity for no benefit over the conditional `UPDATE`. Rejected.
+A reversal first locks its original transfer row, claims its own key, then uses
+the same ordered wallet movement with sender/recipient swapped. The original's
+`reversed_by` prevents a second refund under another key. Spent recipient funds
+produce a persisted decline instead of a negative balance. The original lock
+serializes only reversals of that transfer; all wallet writers share one order.
 
-## Where idempotency lives
+## Consistency, Operations, and Limits
 
-In the database, on `transfers.idempotency_key (UNIQUE)`, claimed with
-`INSERT … ON CONFLICT (idempotency_key) DO NOTHING RETURNING id` **inside the
-same transaction** as the debit/credit. The winner of the race performs the
-movement; concurrent duplicates lose the insert, then re-`SELECT` and return the
-already-committed transfer. Because the key row and the ledger change commit
-together, there is **no TOCTOU** — a retry storm of K identical requests yields
-exactly one debit/credit and K identical responses. A **same key + different
-body** replay is detected via a stored `request_hash` and returns **409**, never
-a second debit. This works across instances because it's enforced in Postgres,
-not app memory.
+Writes favor durable consistency over availability during a database outage:
+there is no offline acceptance queue or in-memory balance fallback. Known
+connection/pool failures return 503; unexpected internal failures return 500,
+both with correlation IDs. A timeout can have an ambiguous commit outcome, so
+clients should retry with the same key. A single primary database remains a
+write-availability and scaling limit. This is not a general claim of partition
+tolerance beyond PostgreSQL's deployment guarantees.
 
-## Consistency vs availability
+JSON domain logs are emitted after money commits; correlation IDs connect them
+to access logs and responses. Prometheus exposes request counts, latency buckets,
+and domain counters. Logs/counters are best-effort, not a durable audit system.
+The burst verifies every response, exact replay bodies, per-wallet reconciliation,
+opposing traffic and reversal races without HTTP retries; evidence records the
+actual target/revision and client p99 separately from server histogram metrics.
 
-This is money, so I chose **consistency (CP)**. Every transfer is a single
-strongly-consistent Postgres transaction; if the database is unreachable the
-write **fails loudly** (`503`) rather than accepting a transfer it can't durably
-and correctly record. What I consciously gave up: write availability during a DB
-outage and easy horizontal write-scaling of the ledger. For a wallet, a declined
-/ retryable request beats a double-spend or a lost debit. Read isolation is
-`READ COMMITTED` (the default) — sufficient because correctness rides on the
-atomic conditional `UPDATE` and the unique constraint, not on snapshot isolation.
+## AI Attribution and Cost
 
-## Reversal (R3)
+The developer supplied the assessment, required an INR 0 solution, carried out
+account/deployment setup, and requested review and retesting. GitHub Copilot
+proposed the stack, schema, concurrency design, implementation, tests, operations
+configuration, and this documentation. The initial AI deadlock argument was
+wrong; observed CI deadlocks drove the correction and regression tests. These
+design choices are not represented as independently derived by the developer.
 
-`POST /transfers/{id}/reverse` reuses the exact same conditional-debit primitive
-with roles swapped (debit the recipient, credit the sender). It has its **own**
-`idempotency_key` committed in the same transaction, so reversing twice with the
-same key refunds once. The original is locked `FOR UPDATE` and stamped with
-`reversed_by`, so a second reversal under a *different* key returns **409
-already_reversed** — no double refund. If the recipient has already spent the
-funds the reversal **declines cleanly** (`recipient_insufficient_funds`) rather
-than forcing a negative balance; allowing a negative "clawback" balance would be
-a deliberate policy switch, not a silent one.
-
-## AI: directed vs decided
-
-- **I directed (my decisions, AI typed):** the correctness model — conditional
-  `UPDATE` over `SELECT FOR UPDATE`/`SERIALIZABLE`; idempotency committed in the
-  same transaction; single-row-debit as the deadlock-avoidance argument; paise-as-
-  `BIGINT`; the CP stance; deposit-as-mint being outside conservation; the
-  reversal semantics (own key, `reversed_by` guard, decline-vs-negative policy).
-- **I let AI decide (accepted its design):** boilerplate shape (FastAPI wiring,
-  Pydantic aliases for `from`/`to`), the JSON log formatter details, Prometheus
-  bucket boundaries, the Dockerfile/compose scaffolding, and the burst-script
-  ergonomics — all reviewed by me but not independently re-derived.
-
-## Free-tier cost note
-
-**₹0.** Local dev is `docker compose` (Postgres + app). Production is a Railway
-free-tier service + a Railway free Postgres. No card required, no paid add-ons.
+Deployment uses Render free Docker hosting and Neon free managed PostgreSQL, not
+the expired Railway trial. Intended spend is INR 0 with no paid resources added;
+billing dashboards were not independently audited. Free services may sleep and
+have quotas, changing prices, or account verification requirements. Authentication
+and funding are assessment-only and must not be used for real money.

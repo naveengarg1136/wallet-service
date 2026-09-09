@@ -2,6 +2,7 @@ import json
 import logging
 import sys
 from contextvars import ContextVar
+from datetime import datetime, timezone
 
 # Correlation id for the request currently being handled. Set by middleware and
 # read by the formatter so every log line carries it automatically.
@@ -11,7 +12,7 @@ correlation_id: ContextVar[str] = ContextVar("correlation_id", default="-")
 class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         payload = {
-            "ts": self.formatTime(record, "%Y-%m-%dT%H:%M:%S.%03dZ"),
+            "ts": datetime.fromtimestamp(record.created, timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z"),
             "level": record.levelname,
             "logger": record.name,
             "msg": record.getMessage(),
