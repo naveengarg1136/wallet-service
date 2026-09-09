@@ -9,6 +9,7 @@ the full, unchanged assessment workload ran. Run ID:
 
 - [Summary](live-singapore-20260909-185430/summary.json): 31 checks passed, zero failed; 599 requests and zero server/transport errors, with no retries.
 - [Client request timings and IDs](live-singapore-20260909-185430/requests.jsonl): every response preserved its correlation ID; no authorization headers or request bodies.
+- [Render service logs (partial)](live-singapore-20260909-185430/service.jsonl): 1,220 sanitized events; 399 of 599 request access logs are present.
 - [Metrics before](live-singapore-20260909-185430/metrics-before.txt) and [after](live-singapore-20260909-185430/metrics-after.txt): actual live Prometheus counters, latency buckets, and business metrics.
 
 Duration was 73.451 seconds, request rate 8.155 requests/second, and client p99
@@ -19,9 +20,25 @@ The 300-transfer contention phase used 40 workers; all requests returned 201,
 balances reconciled to the completed ledger, and the total remained 50,000 paise.
 The full run also passed same-key replay and mixed transfer/reversal races.
 
-The matching Render application-log export is still pending. These are real live
-client measurements and metrics, not a substitute for server access/domain logs.
-The public local and CI logs below are explicitly separate evidence sources.
+### Partial Log Coverage
+
+The supplied Render export covers the later portion of this run, approximately
+13:24:56 through 13:25:43 UTC. The sanitizer retained 1,220 run-scoped events,
+including 399 unique access logs (66.61% coverage). Their HTTP methods and status
+codes match the client records. Access logs for 200 requests are unavailable
+at the beginning of the run. The export does not establish why they are absent;
+do not infer an application logging failure or recreate the missing events.
+
+`export_logs.py` reported **200 request logs missing** and exited **1**, as
+designed. This coverage failure is separate from the **31/31 passing live checks**,
+which used all 599 client responses and balance reads. The partial file is shared
+deliberately with this limitation, not presented as a full run trace. It contains
+no authorization headers, user identifiers, idempotency keys, arbitrary exception
+text, or database connection strings.
+
+Complete local logs and separate CI logs demonstrate logging in those environments;
+they do not fill this live export's gaps. Whether partial live logs satisfy the
+assessment's evidence requirement is the reviewer's decision.
 
 ## Local PostgreSQL Run
 

@@ -5,21 +5,37 @@ transactional database constraints and ordered row locks enforce correctness.
 
 - Live API: https://wallet-service-sg.onrender.com
 - Repository: https://github.com/naveengarg1136/wallet-service
-- Public structured log capture: [evidence/local/service.jsonl](evidence/local/service.jsonl)
+- Public Render logs (partial): [live capture](evidence/live-singapore-20260909-185430/service.jsonl)
+- Complete local logs: [local capture](evidence/local/service.jsonl)
 - Verification status and metrics: [evidence/README.md](evidence/README.md)
 - CI and streaming-style job logs: https://github.com/naveengarg1136/wallet-service/actions
 - One-page design: [WRITEUP.md](WRITEUP.md)
 
-The checked-in log capture is from the local PostgreSQL validation run, not
-Render production. CI publishes its own sanitized logs and downloadable evidence
-on every run. A private Render dashboard URL is not a public log link.
+The Render capture contains 1,220 sanitized events, including access logs for
+399 of 599 live requests (66.61%). The supplied export lacks the initial portion
+of the run: 200 request access logs are unavailable. This is partial server-log
+evidence, not a full trace. Local and CI logs are separate evidence sources;
+they do not replace missing Render records. A private dashboard is not a public
+log link. Acceptance of partial live logs is the assessment reviewer's decision.
 
 The Singapore deployment passed all 31 live checks on 2026-09-09 at revision
 `199342b`: 599 requests, zero server/transport errors, no retries, and client p99
 7170.194 ms. [Live capture](evidence/live-singapore-20260909-185430/summary.json).
 This is a measured correctness pass, not a latency guarantee. The earlier Oregon
 deployment failed contention with gateway 502s; that failure is not a live pass.
-Matching Render application logs for the Singapore run still require export.
+All 599 client responses were checked independently of server-log coverage.
+
+## Submission Checklist
+
+| Deliverable | Evidence and Limitations |
+| --- | --- |
+| Public repository and deployed API | Links above; Render Free and Neon managed PostgreSQL in Singapore. |
+| Correctness and concurrency | 31/31 live checks, including wallet creation, same-key replay, contention, and reversal races. |
+| Public structured logs | Partial live capture: 399/599 access logs; complete local capture and separate CI logs. |
+| Rate, p99, errors, business metrics | [Live evidence](evidence/README.md): 8.155 requests/s, client p99 7170.194 ms, zero server/transport errors, Prometheus snapshots. |
+| One-command run and test | Compose and burst commands below; multi-stage, non-root image with `HEALTHCHECK`. |
+| Fresh-checkout CI | [Passing CI for the tested application](https://github.com/naveengarg1136/wallet-service/actions/runs/34356479533). |
+| Design, tradeoffs, AI attribution, cost | [Write-up](WRITEUP.md); assessment-only auth/funding, intended INR 0, billing not audited. |
 
 ## Run and Test
 
@@ -116,8 +132,8 @@ an existing service's region, so this setting does not move the Oregon service.
 
 The source service must be named exactly `wallet-service`, must exist in the same
 workspace, and must have a valid `DATABASE_URL`. If its name differs, change only
-`fromService.name`. Do not delete it while this Blueprint references it; migrate
-the secret to an environment group before retiring the source permanently.
+`fromService.name`. Do not delete it while this Blueprint references it; first
+make the database configuration independent using the retirement steps below.
 Referenced values refresh on Blueprint sync, not immediately on source changes.
 If `wallet-service-sg` already exists, Render attempts to apply this configuration
 to it; its region must already be Singapore. A Blueprint standardizes settings
@@ -131,6 +147,55 @@ No database migration or paid database is needed: both services use the existing
 Neon database. They still connect over TLS on the public network, not a shared
 private network. Free services share Render's monthly instance-hour allowance;
 do not leave both running indefinitely. Select no paid add-ons and check usage.
+
+### Retiring the Oregon Service
+
+The current Blueprint still reads `DATABASE_URL` from `wallet-service`.
+Deleting that service now can break future Blueprint syncs, even if the current
+Singapore process continues running. No cloud resource was deleted here.
+
+1. In Singapore's Render **Environment** settings, verify `DATABASE_URL` exists
+	with the correct Neon value. Keep a private backup; never put it in Git or chat.
+2. Change the Blueprint's `DATABASE_URL` entry from `fromService` to `sync: false`.
+	Render ignores `sync: false` on existing Blueprint updates and preserves
+	existing environment variables. For a new service, it prompts for the secret.
+3. Sync the Blueprint and check Singapore's environment still has the value.
+	If it is missing, set it privately in the dashboard before redeploying.
+4. Redeploy Singapore, verify GET `/` and `/healthz`, and run a fresh burst into
+	a new evidence directory. Confirm no Blueprint reference to Oregon remains.
+5. Only then delete the Oregon **web service**, not Neon or the Singapore service.
+
+Until then, suspend the old service to stop its compute usage while preserving
+its configuration. The dependency-removal change has not been applied in this
+repository. See [Render's environment-variable rules](https://render.com/docs/blueprint-spec#setting-environment-variables).
+
+### Availability During Review
+
+Render Free web services have no stated 10-15-day expiry, but no continuous
+uptime guarantee. They sleep after 15 minutes without inbound traffic and wake
+on the next request, normally in about a minute. Before testing, wait for
+`/healthz` to return 200. The 30-day free Render Postgres expiry does not apply
+to this deployment's Neon database.
+
+Render grants 750 running instance-hours per workspace per calendar month.
+One continuously running service uses at most 240 hours in 10 days or 360 in
+15; two use 480 or 720, plus hours already consumed this month. Sleeping services
+do not consume instance-hours. Exhaustion suspends free web services until the
+next month. Bandwidth limits can also suspend services without a payment method;
+with one, overages may incur charges. Build-minute exhaustion can block new
+deploys. Check Render **Billing > Monthly Included Usage** and Neon usage/limits;
+neither dashboard has been audited here. Avoid automated keep-alive pings and
+repeated load runs during review. These conditions make a 10-15-day assessment
+window feasible, not guaranteed. [Current Render limits](https://render.com/docs/free).
+
+Neon Free currently includes 100 CU-hours per project/month, 0.5 GB storage, and
+5 GB public network transfer. At a constant 0.25 CU, 15 days of continuous DB
+activity uses 90 CU-hours before earlier usage; larger compute consumes more.
+Queries from health checks can keep compute active while the app is running.
+Neon scales to zero after five idle minutes, but exhausted compute/transfer
+allowances suspend it until the next billing period; exceeding storage prevents
+storage-increasing operations. Check the remaining allowance rather than assuming
+calendar duration alone guarantees access. [Current Neon limits](https://neon.com/docs/introduction/plans).
 
 Health probes use a separate one-connection pool with a three-second timeout,
 so request-pool exhaustion alone does not block the database probe. A failed or
@@ -178,6 +243,9 @@ python scripts/export_logs.py app.log evidence/run
 The exporter includes only that run's correlation IDs and allowlisted event
 fields, excludes credentials/arbitrary exception text, and fails when any
 request lacks a matching access log. Never publish the unfiltered input log.
+The published partial Render capture retains that coverage failure: the exporter
+reported 200 missing request logs and exited 1. Its safe output is shared with
+the limitation disclosed; the exporter and CI coverage gate were not weakened.
 CI prints sanitized logs in **Publish sanitized service logs** and retains the
 evidence artifact for 30 days; checked-in evidence does not depend on retention.
 
