@@ -14,6 +14,10 @@ The checked-in log capture is from the local PostgreSQL validation run, not
 Render production. CI publishes its own sanitized logs and downloadable evidence
 on every run. A private Render dashboard URL is not a public log link.
 
+The Oregon deployment passed wallet creation and same-key replay checks but
+failed the latest contention run with gateway 502s. Local and container CI passes
+do not establish a passing live deployment; Singapore verification is pending.
+
 ## Run and Test
 
 ```bash
@@ -87,6 +91,34 @@ in Render and set `DB_SSL=require`; never commit the real connection string.
 URL `sslmode` also enables TLS; the app uses certificate-verified TLS, including
 when a libpq URL only requested encryption. Render provides `PORT` and
 `RENDER_GIT_COMMIT`; GET `/` exposes the revision for deployment verification.
+
+### Singapore Deployment
+
+Neon is in AWS Singapore; the original Render service is in Oregon. Cross-region
+SQL round trips extend lock hold times and are a latency risk under contention.
+The blueprint pins new services to Singapore. Render does not support changing
+an existing service's region, so this setting does not move the Oregon service.
+
+1. In Render, create a new **Web Service** from this repository's `main` branch.
+2. Select **Docker**, name `wallet-service-sg`, region **Singapore**, and **Free**.
+	Leave Root Directory blank and use Dockerfile path `./Dockerfile`.
+3. Copy the existing `DATABASE_URL` privately in Render; retain `DB_SSL=require`
+	and `LOG_LEVEL=INFO`. Set Health Check Path to `/healthz`.
+4. Deploy the latest tested commit. Verify GET `/` reports that commit and
+	`/healthz` returns 200 before running the full burst against the new URL.
+5. Use a new evidence directory for each retest; retain the failed capture.
+	Export matching Render logs and update the public API/evidence links only
+	after verification. Suspend the Oregon service after the replacement passes.
+
+No database migration or paid database is needed: both services use the existing
+Neon database. They still connect over TLS on the public network, not a shared
+private network. Free services share Render's monthly instance-hour allowance;
+do not leave both running indefinitely. Select no paid add-ons and check usage.
+
+Health probes use a separate one-connection pool with a three-second timeout,
+so request-pool exhaustion alone does not block the database probe. A failed or
+timed-out database ping still returns 503. This is not a throughput fix or proof
+that every gateway failure is resolved; the unchanged live burst is the gate.
 
 The target spend is INR 0, using only free plans with no paid add-ons selected.
 Render services and Neon compute can sleep; cold starts, quotas, and service

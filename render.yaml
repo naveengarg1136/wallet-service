@@ -6,6 +6,7 @@ services:
     runtime: docker
     dockerfilePath: ./Dockerfile
     plan: free
+    region: singapore
     healthCheckPath: /healthz
     envVars:
       - key: DATABASE_URL      # paste your Neon/Supabase connection string (set as secret)

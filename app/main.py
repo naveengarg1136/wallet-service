@@ -11,7 +11,7 @@ from sqlalchemy.exc import InterfaceError, OperationalError, TimeoutError as Poo
 
 from . import metrics, store
 from .config import settings
-from .db import engine, ping, run_migrations
+from .db import engine, health_engine, ping, run_migrations
 from .logging_conf import configure_logging, correlation_id, log_event
 from .schemas import DepositIn, ReverseIn, TransferIn
 from .store import ApiError
@@ -27,6 +27,7 @@ async def lifespan(_: FastAPI):
     log_event(logger, "service.started", revision=settings.revision)
     yield
     await engine.dispose()
+    await health_engine.dispose()
 
 
 app = FastAPI(title="Wallet & P2P Transfer", version="1.0.0", lifespan=lifespan)

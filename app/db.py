@@ -1,3 +1,4 @@
+import asyncio
 import pathlib
 from uuid import uuid4
 
@@ -26,6 +27,17 @@ engine = create_async_engine(
     connect_args=_connect_args,
 )
 
+health_engine = create_async_engine(
+    settings.database_url,
+    isolation_level="AUTOCOMMIT",
+    pool_pre_ping=True,
+    pool_size=1,
+    max_overflow=0,
+    pool_timeout=1,
+    pool_recycle=300,
+    connect_args={**_connect_args, "timeout": 2, "command_timeout": 2},
+)
+
 _MIGRATION = pathlib.Path(__file__).resolve().parent.parent / "migrations" / "001_init.sql"
 
 
@@ -39,5 +51,6 @@ async def run_migrations() -> None:
 
 
 async def ping() -> None:
-    async with engine.connect() as conn:
-        await conn.execute(text("SELECT 1"))
+    async with asyncio.timeout(3):
+        async with health_engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))

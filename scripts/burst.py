@@ -242,13 +242,19 @@ def gate6_mixed_reversals():
 
 
 def capture_metrics():
-    with urllib.request.urlopen(BASE + "/metrics", timeout=120) as response:
-        return response.read().decode()
+    try:
+        with urllib.request.urlopen(BASE + "/metrics", timeout=120) as response:
+            return response.read().decode()
+    except (urllib.error.URLError, OSError) as error:
+        detail = f"HTTP {error.code}" if isinstance(error, urllib.error.HTTPError) else type(error).__name__
+        check("metrics snapshot available", False, detail)
+        return f"# Metrics unavailable: {detail}\n"
 
 
 def write_evidence(directory, elapsed, before_metrics, revision):
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
+    after_metrics = capture_metrics()
     latencies = sorted(record["latency_ms"] for record in REQUESTS)
     errors = sum(record["status"] == 0 or record["status"] >= 500 for record in REQUESTS)
     summary = {"target": BASE, "revision": revision, "run_id": RUN_ID, "passed": PASSES, "failed": FAILS,
@@ -261,7 +267,7 @@ def write_evidence(directory, elapsed, before_metrics, revision):
     (directory / "summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     (directory / "requests.jsonl").write_text("".join(json.dumps(record) + "\n" for record in REQUESTS), encoding="utf-8")
     (directory / "metrics-before.txt").write_text(before_metrics, encoding="utf-8")
-    (directory / "metrics-after.txt").write_text(capture_metrics(), encoding="utf-8")
+    (directory / "metrics-after.txt").write_text(after_metrics, encoding="utf-8")
     print(f"Evidence: {directory}; client p99={summary['p99_client_latency_ms']}ms; server/transport errors={errors}")
 
 
