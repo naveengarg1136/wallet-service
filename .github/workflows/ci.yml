@@ -1,0 +1,33 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  invariants:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and start app + Postgres
+        run: docker compose up --build -d
+
+      - name: Wait for /healthz
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8000/healthz; then echo "healthy"; exit 0; fi
+            sleep 2
+          done
+          echo "service did not become healthy" && exit 1
+
+      - name: Reproduce all invariants (burst)
+        run: python3 scripts/burst.py http://localhost:8000
+
+      - name: Dump logs on failure
+        if: failure()
+        run: docker compose logs
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
