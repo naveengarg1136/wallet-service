@@ -1,0 +1,306 @@
+# HELP python_gc_objects_collected_total Objects collected during gc
+# TYPE python_gc_objects_collected_total counter
+python_gc_objects_collected_total{generation="0"} 19883.0
+python_gc_objects_collected_total{generation="1"} 9640.0
+python_gc_objects_collected_total{generation="2"} 1307.0
+# HELP python_gc_objects_uncollectable_total Uncollectable objects found during GC
+# TYPE python_gc_objects_uncollectable_total counter
+python_gc_objects_uncollectable_total{generation="0"} 0.0
+python_gc_objects_uncollectable_total{generation="1"} 0.0
+python_gc_objects_uncollectable_total{generation="2"} 0.0
+# HELP python_gc_collections_total Number of times this generation was collected
+# TYPE python_gc_collections_total counter
+python_gc_collections_total{generation="0"} 330.0
+python_gc_collections_total{generation="1"} 30.0
+python_gc_collections_total{generation="2"} 2.0
+# HELP python_info Python platform information
+# TYPE python_info gauge
+python_info{implementation="CPython",major="3",minor="12",patchlevel="14",version="3.12.14"} 1.0
+# HELP process_virtual_memory_bytes Virtual memory size in bytes.
+# TYPE process_virtual_memory_bytes gauge
+process_virtual_memory_bytes 4.22559744e+08
+# HELP process_resident_memory_bytes Resident memory size in bytes.
+# TYPE process_resident_memory_bytes gauge
+process_resident_memory_bytes 1.05693184e+08
+# HELP process_start_time_seconds Start time of the process since unix epoch in seconds.
+# TYPE process_start_time_seconds gauge
+process_start_time_seconds 1.78896020015e+09
+# HELP process_cpu_seconds_total Total user and system CPU time spent in seconds.
+# TYPE process_cpu_seconds_total counter
+process_cpu_seconds_total 10.48
+# HELP process_open_fds Number of open file descriptors.
+# TYPE process_open_fds gauge
+process_open_fds 24.0
+# HELP process_max_fds Maximum number of open file descriptors.
+# TYPE process_max_fds gauge
+process_max_fds 1.048576e+06
+# HELP http_requests_total Total HTTP requests
+# TYPE http_requests_total counter
+http_requests_total{method="HEAD",path="/",status="405"} 1.0
+http_requests_total{method="GET",path="/healthz",status="200"} 32.0
+http_requests_total{method="GET",path="/",status="200"} 4.0
+http_requests_total{method="GET",path="unmatched",status="404"} 1.0
+http_requests_total{method="POST",path="/wallets",status="200"} 63.0
+http_requests_total{method="POST",path="/wallets/{wallet_id}/deposit",status="201"} 12.0
+http_requests_total{method="POST",path="/transfers",status="201"} 387.0
+http_requests_total{method="POST",path="/transfers",status="200"} 30.0
+http_requests_total{method="GET",path="/wallets/{wallet_id}",status="200"} 16.0
+http_requests_total{method="GET",path="/transfers/{transfer_id}",status="200"} 2.0
+http_requests_total{method="POST",path="/transfers",status="409"} 2.0
+http_requests_total{method="POST",path="/transfers",status="422"} 8.0
+http_requests_total{method="POST",path="/wallets/{wallet_id}/deposit",status="422"} 8.0
+http_requests_total{method="POST",path="/wallets",status="401"} 1.0
+http_requests_total{method="POST",path="/transfers",status="403"} 1.0
+http_requests_total{method="POST",path="/wallets/{wallet_id}/deposit",status="403"} 1.0
+http_requests_total{method="GET",path="/wallets/{wallet_id}",status="403"} 1.0
+http_requests_total{method="GET",path="/transfers/{transfer_id}",status="403"} 1.0
+http_requests_total{method="POST",path="/wallets/{wallet_id}/deposit",status="409"} 1.0
+http_requests_total{method="POST",path="/wallets/{wallet_id}/deposit",status="200"} 1.0
+http_requests_total{method="POST",path="/transfers/{transfer_id}/reverse",status="201"} 22.0
+http_requests_total{method="POST",path="/transfers/{transfer_id}/reverse",status="200"} 20.0
+http_requests_total{method="POST",path="/transfers/{transfer_id}/reverse",status="409"} 21.0
+# HELP http_requests_created Total HTTP requests
+# TYPE http_requests_created gauge
+http_requests_created{method="HEAD",path="/",status="405"} 1.7889602146370084e+09
+http_requests_created{method="GET",path="/healthz",status="200"} 1.7889602182730916e+09
+http_requests_created{method="GET",path="/",status="200"} 1.7889602191860127e+09
+http_requests_created{method="GET",path="unmatched",status="404"} 1.788960233899981e+09
+http_requests_created{method="POST",path="/wallets",status="200"} 1.7889602735324175e+09
+http_requests_created{method="POST",path="/wallets/{wallet_id}/deposit",status="201"} 1.7889602770635302e+09
+http_requests_created{method="POST",path="/transfers",status="201"} 1.7889602808356233e+09
+http_requests_created{method="POST",path="/transfers",status="200"} 1.788960280935799e+09
+http_requests_created{method="GET",path="/wallets/{wallet_id}",status="200"} 1.788960281973251e+09
+http_requests_created{method="GET",path="/transfers/{transfer_id}",status="200"} 1.788960282465032e+09
+http_requests_created{method="POST",path="/transfers",status="409"} 1.7889602827096398e+09
+http_requests_created{method="POST",path="/transfers",status="422"} 1.788960312514404e+09
+http_requests_created{method="POST",path="/wallets/{wallet_id}/deposit",status="422"} 1.7889603140679939e+09
+http_requests_created{method="POST",path="/wallets",status="401"} 1.7889603155077581e+09
+http_requests_created{method="POST",path="/transfers",status="403"} 1.7889603157127326e+09
+http_requests_created{method="POST",path="/wallets/{wallet_id}/deposit",status="403"} 1.7889603159209456e+09
+http_requests_created{method="GET",path="/wallets/{wallet_id}",status="403"} 1.7889603161707184e+09
+http_requests_created{method="GET",path="/transfers/{transfer_id}",status="403"} 1.7889603166418827e+09
+http_requests_created{method="POST",path="/wallets/{wallet_id}/deposit",status="409"} 1.7889603179973168e+09
+http_requests_created{method="POST",path="/wallets/{wallet_id}/deposit",status="200"} 1.7889603193958216e+09
+http_requests_created{method="POST",path="/transfers/{transfer_id}/reverse",status="201"} 1.7889603236327577e+09
+http_requests_created{method="POST",path="/transfers/{transfer_id}/reverse",status="200"} 1.7889603236539366e+09
+http_requests_created{method="POST",path="/transfers/{transfer_id}/reverse",status="409"} 1.7889603251141458e+09
+# HELP http_request_duration_seconds HTTP request latency in seconds
+# TYPE http_request_duration_seconds histogram
+http_request_duration_seconds_bucket{le="0.005",method="HEAD",path="/"} 1.0
+http_request_duration_seconds_bucket{le="0.01",method="HEAD",path="/"} 1.0
+http_request_duration_seconds_bucket{le="0.025",method="HEAD",path="/"} 1.0
+http_request_duration_seconds_bucket{le="0.05",method="HEAD",path="/"} 1.0
+http_request_duration_seconds_bucket{le="0.1",method="HEAD",path="/"} 1.0
+http_request_duration_seconds_bucket{le="0.25",method="HEAD",path="/"} 1.0
+http_request_duration_seconds_bucket{le="0.5",method="HEAD",path="/"} 1.0
+http_request_duration_seconds_bucket{le="1.0",method="HEAD",path="/"} 1.0
+http_request_duration_seconds_bucket{le="2.5",method="HEAD",path="/"} 1.0
+http_request_duration_seconds_bucket{le="5.0",method="HEAD",path="/"} 1.0
+http_request_duration_seconds_bucket{le="10.0",method="HEAD",path="/"} 1.0
+http_request_duration_seconds_bucket{le="30.0",method="HEAD",path="/"} 1.0
+http_request_duration_seconds_bucket{le="60.0",method="HEAD",path="/"} 1.0
+http_request_duration_seconds_bucket{le="120.0",method="HEAD",path="/"} 1.0
+http_request_duration_seconds_bucket{le="+Inf",method="HEAD",path="/"} 1.0
+http_request_duration_seconds_count{method="HEAD",path="/"} 1.0
+http_request_duration_seconds_sum{method="HEAD",path="/"} 0.0005461920518428087
+http_request_duration_seconds_bucket{le="0.005",method="GET",path="/healthz"} 0.0
+http_request_duration_seconds_bucket{le="0.01",method="GET",path="/healthz"} 1.0
+http_request_duration_seconds_bucket{le="0.025",method="GET",path="/healthz"} 24.0
+http_request_duration_seconds_bucket{le="0.05",method="GET",path="/healthz"} 24.0
+http_request_duration_seconds_bucket{le="0.1",method="GET",path="/healthz"} 26.0
+http_request_duration_seconds_bucket{le="0.25",method="GET",path="/healthz"} 30.0
+http_request_duration_seconds_bucket{le="0.5",method="GET",path="/healthz"} 32.0
+http_request_duration_seconds_bucket{le="1.0",method="GET",path="/healthz"} 32.0
+http_request_duration_seconds_bucket{le="2.5",method="GET",path="/healthz"} 32.0
+http_request_duration_seconds_bucket{le="5.0",method="GET",path="/healthz"} 32.0
+http_request_duration_seconds_bucket{le="10.0",method="GET",path="/healthz"} 32.0
+http_request_duration_seconds_bucket{le="30.0",method="GET",path="/healthz"} 32.0
+http_request_duration_seconds_bucket{le="60.0",method="GET",path="/healthz"} 32.0
+http_request_duration_seconds_bucket{le="120.0",method="GET",path="/healthz"} 32.0
+http_request_duration_seconds_bucket{le="+Inf",method="GET",path="/healthz"} 32.0
+http_request_duration_seconds_count{method="GET",path="/healthz"} 32.0
+http_request_duration_seconds_sum{method="GET",path="/healthz"} 1.7999035289976746
+http_request_duration_seconds_bucket{le="0.005",method="GET",path="/"} 4.0
+http_request_duration_seconds_bucket{le="0.01",method="GET",path="/"} 4.0
+http_request_duration_seconds_bucket{le="0.025",method="GET",path="/"} 4.0
+http_request_duration_seconds_bucket{le="0.05",method="GET",path="/"} 4.0
+http_request_duration_seconds_bucket{le="0.1",method="GET",path="/"} 4.0
+http_request_duration_seconds_bucket{le="0.25",method="GET",path="/"} 4.0
+http_request_duration_seconds_bucket{le="0.5",method="GET",path="/"} 4.0
+http_request_duration_seconds_bucket{le="1.0",method="GET",path="/"} 4.0
+http_request_duration_seconds_bucket{le="2.5",method="GET",path="/"} 4.0
+http_request_duration_seconds_bucket{le="5.0",method="GET",path="/"} 4.0
+http_request_duration_seconds_bucket{le="10.0",method="GET",path="/"} 4.0
+http_request_duration_seconds_bucket{le="30.0",method="GET",path="/"} 4.0
+http_request_duration_seconds_bucket{le="60.0",method="GET",path="/"} 4.0
+http_request_duration_seconds_bucket{le="120.0",method="GET",path="/"} 4.0
+http_request_duration_seconds_bucket{le="+Inf",method="GET",path="/"} 4.0
+http_request_duration_seconds_count{method="GET",path="/"} 4.0
+http_request_duration_seconds_sum{method="GET",path="/"} 0.003078768029808998
+http_request_duration_seconds_bucket{le="0.005",method="GET",path="unmatched"} 1.0
+http_request_duration_seconds_bucket{le="0.01",method="GET",path="unmatched"} 1.0
+http_request_duration_seconds_bucket{le="0.025",method="GET",path="unmatched"} 1.0
+http_request_duration_seconds_bucket{le="0.05",method="GET",path="unmatched"} 1.0
+http_request_duration_seconds_bucket{le="0.1",method="GET",path="unmatched"} 1.0
+http_request_duration_seconds_bucket{le="0.25",method="GET",path="unmatched"} 1.0
+http_request_duration_seconds_bucket{le="0.5",method="GET",path="unmatched"} 1.0
+http_request_duration_seconds_bucket{le="1.0",method="GET",path="unmatched"} 1.0
+http_request_duration_seconds_bucket{le="2.5",method="GET",path="unmatched"} 1.0
+http_request_duration_seconds_bucket{le="5.0",method="GET",path="unmatched"} 1.0
+http_request_duration_seconds_bucket{le="10.0",method="GET",path="unmatched"} 1.0
+http_request_duration_seconds_bucket{le="30.0",method="GET",path="unmatched"} 1.0
+http_request_duration_seconds_bucket{le="60.0",method="GET",path="unmatched"} 1.0
+http_request_duration_seconds_bucket{le="120.0",method="GET",path="unmatched"} 1.0
+http_request_duration_seconds_bucket{le="+Inf",method="GET",path="unmatched"} 1.0
+http_request_duration_seconds_count{method="GET",path="unmatched"} 1.0
+http_request_duration_seconds_sum{method="GET",path="unmatched"} 0.0007219850085675716
+http_request_duration_seconds_bucket{le="0.005",method="POST",path="/wallets"} 1.0
+http_request_duration_seconds_bucket{le="0.01",method="POST",path="/wallets"} 1.0
+http_request_duration_seconds_bucket{le="0.025",method="POST",path="/wallets"} 14.0
+http_request_duration_seconds_bucket{le="0.05",method="POST",path="/wallets"} 14.0
+http_request_duration_seconds_bucket{le="0.1",method="POST",path="/wallets"} 14.0
+http_request_duration_seconds_bucket{le="0.25",method="POST",path="/wallets"} 14.0
+http_request_duration_seconds_bucket{le="0.5",method="POST",path="/wallets"} 16.0
+http_request_duration_seconds_bucket{le="1.0",method="POST",path="/wallets"} 22.0
+http_request_duration_seconds_bucket{le="2.5",method="POST",path="/wallets"} 44.0
+http_request_duration_seconds_bucket{le="5.0",method="POST",path="/wallets"} 64.0
+http_request_duration_seconds_bucket{le="10.0",method="POST",path="/wallets"} 64.0
+http_request_duration_seconds_bucket{le="30.0",method="POST",path="/wallets"} 64.0
+http_request_duration_seconds_bucket{le="60.0",method="POST",path="/wallets"} 64.0
+http_request_duration_seconds_bucket{le="120.0",method="POST",path="/wallets"} 64.0
+http_request_duration_seconds_bucket{le="+Inf",method="POST",path="/wallets"} 64.0
+http_request_duration_seconds_count{method="POST",path="/wallets"} 64.0
+http_request_duration_seconds_sum{method="POST",path="/wallets"} 108.631447869353
+http_request_duration_seconds_bucket{le="0.005",method="POST",path="/wallets/{wallet_id}/deposit"} 8.0
+http_request_duration_seconds_bucket{le="0.01",method="POST",path="/wallets/{wallet_id}/deposit"} 8.0
+http_request_duration_seconds_bucket{le="0.025",method="POST",path="/wallets/{wallet_id}/deposit"} 9.0
+http_request_duration_seconds_bucket{le="0.05",method="POST",path="/wallets/{wallet_id}/deposit"} 15.0
+http_request_duration_seconds_bucket{le="0.1",method="POST",path="/wallets/{wallet_id}/deposit"} 23.0
+http_request_duration_seconds_bucket{le="0.25",method="POST",path="/wallets/{wallet_id}/deposit"} 23.0
+http_request_duration_seconds_bucket{le="0.5",method="POST",path="/wallets/{wallet_id}/deposit"} 23.0
+http_request_duration_seconds_bucket{le="1.0",method="POST",path="/wallets/{wallet_id}/deposit"} 23.0
+http_request_duration_seconds_bucket{le="2.5",method="POST",path="/wallets/{wallet_id}/deposit"} 23.0
+http_request_duration_seconds_bucket{le="5.0",method="POST",path="/wallets/{wallet_id}/deposit"} 23.0
+http_request_duration_seconds_bucket{le="10.0",method="POST",path="/wallets/{wallet_id}/deposit"} 23.0
+http_request_duration_seconds_bucket{le="30.0",method="POST",path="/wallets/{wallet_id}/deposit"} 23.0
+http_request_duration_seconds_bucket{le="60.0",method="POST",path="/wallets/{wallet_id}/deposit"} 23.0
+http_request_duration_seconds_bucket{le="120.0",method="POST",path="/wallets/{wallet_id}/deposit"} 23.0
+http_request_duration_seconds_bucket{le="+Inf",method="POST",path="/wallets/{wallet_id}/deposit"} 23.0
+http_request_duration_seconds_count{method="POST",path="/wallets/{wallet_id}/deposit"} 23.0
+http_request_duration_seconds_sum{method="POST",path="/wallets/{wallet_id}/deposit"} 0.7871093971189111
+http_request_duration_seconds_bucket{le="0.005",method="POST",path="/transfers"} 8.0
+http_request_duration_seconds_bucket{le="0.01",method="POST",path="/transfers"} 8.0
+http_request_duration_seconds_bucket{le="0.025",method="POST",path="/transfers"} 8.0
+http_request_duration_seconds_bucket{le="0.05",method="POST",path="/transfers"} 11.0
+http_request_duration_seconds_bucket{le="0.1",method="POST",path="/transfers"} 35.0
+http_request_duration_seconds_bucket{le="0.25",method="POST",path="/transfers"} 38.0
+http_request_duration_seconds_bucket{le="0.5",method="POST",path="/transfers"} 38.0
+http_request_duration_seconds_bucket{le="1.0",method="POST",path="/transfers"} 38.0
+http_request_duration_seconds_bucket{le="2.5",method="POST",path="/transfers"} 236.0
+http_request_duration_seconds_bucket{le="5.0",method="POST",path="/transfers"} 406.0
+http_request_duration_seconds_bucket{le="10.0",method="POST",path="/transfers"} 428.0
+http_request_duration_seconds_bucket{le="30.0",method="POST",path="/transfers"} 428.0
+http_request_duration_seconds_bucket{le="60.0",method="POST",path="/transfers"} 428.0
+http_request_duration_seconds_bucket{le="120.0",method="POST",path="/transfers"} 428.0
+http_request_duration_seconds_bucket{le="+Inf",method="POST",path="/transfers"} 428.0
+http_request_duration_seconds_count{method="POST",path="/transfers"} 428.0
+http_request_duration_seconds_sum{method="POST",path="/transfers"} 1120.062651666347
+http_request_duration_seconds_bucket{le="0.005",method="GET",path="/wallets/{wallet_id}"} 0.0
+http_request_duration_seconds_bucket{le="0.01",method="GET",path="/wallets/{wallet_id}"} 0.0
+http_request_duration_seconds_bucket{le="0.025",method="GET",path="/wallets/{wallet_id}"} 17.0
+http_request_duration_seconds_bucket{le="0.05",method="GET",path="/wallets/{wallet_id}"} 17.0
+http_request_duration_seconds_bucket{le="0.1",method="GET",path="/wallets/{wallet_id}"} 17.0
+http_request_duration_seconds_bucket{le="0.25",method="GET",path="/wallets/{wallet_id}"} 17.0
+http_request_duration_seconds_bucket{le="0.5",method="GET",path="/wallets/{wallet_id}"} 17.0
+http_request_duration_seconds_bucket{le="1.0",method="GET",path="/wallets/{wallet_id}"} 17.0
+http_request_duration_seconds_bucket{le="2.5",method="GET",path="/wallets/{wallet_id}"} 17.0
+http_request_duration_seconds_bucket{le="5.0",method="GET",path="/wallets/{wallet_id}"} 17.0
+http_request_duration_seconds_bucket{le="10.0",method="GET",path="/wallets/{wallet_id}"} 17.0
+http_request_duration_seconds_bucket{le="30.0",method="GET",path="/wallets/{wallet_id}"} 17.0
+http_request_duration_seconds_bucket{le="60.0",method="GET",path="/wallets/{wallet_id}"} 17.0
+http_request_duration_seconds_bucket{le="120.0",method="GET",path="/wallets/{wallet_id}"} 17.0
+http_request_duration_seconds_bucket{le="+Inf",method="GET",path="/wallets/{wallet_id}"} 17.0
+http_request_duration_seconds_count{method="GET",path="/wallets/{wallet_id}"} 17.0
+http_request_duration_seconds_sum{method="GET",path="/wallets/{wallet_id}"} 0.34295822214335203
+http_request_duration_seconds_bucket{le="0.005",method="GET",path="/transfers/{transfer_id}"} 0.0
+http_request_duration_seconds_bucket{le="0.01",method="GET",path="/transfers/{transfer_id}"} 0.0
+http_request_duration_seconds_bucket{le="0.025",method="GET",path="/transfers/{transfer_id}"} 3.0
+http_request_duration_seconds_bucket{le="0.05",method="GET",path="/transfers/{transfer_id}"} 3.0
+http_request_duration_seconds_bucket{le="0.1",method="GET",path="/transfers/{transfer_id}"} 3.0
+http_request_duration_seconds_bucket{le="0.25",method="GET",path="/transfers/{transfer_id}"} 3.0
+http_request_duration_seconds_bucket{le="0.5",method="GET",path="/transfers/{transfer_id}"} 3.0
+http_request_duration_seconds_bucket{le="1.0",method="GET",path="/transfers/{transfer_id}"} 3.0
+http_request_duration_seconds_bucket{le="2.5",method="GET",path="/transfers/{transfer_id}"} 3.0
+http_request_duration_seconds_bucket{le="5.0",method="GET",path="/transfers/{transfer_id}"} 3.0
+http_request_duration_seconds_bucket{le="10.0",method="GET",path="/transfers/{transfer_id}"} 3.0
+http_request_duration_seconds_bucket{le="30.0",method="GET",path="/transfers/{transfer_id}"} 3.0
+http_request_duration_seconds_bucket{le="60.0",method="GET",path="/transfers/{transfer_id}"} 3.0
+http_request_duration_seconds_bucket{le="120.0",method="GET",path="/transfers/{transfer_id}"} 3.0
+http_request_duration_seconds_bucket{le="+Inf",method="GET",path="/transfers/{transfer_id}"} 3.0
+http_request_duration_seconds_count{method="GET",path="/transfers/{transfer_id}"} 3.0
+http_request_duration_seconds_sum{method="GET",path="/transfers/{transfer_id}"} 0.06690937385428697
+http_request_duration_seconds_bucket{le="0.005",method="POST",path="/transfers/{transfer_id}/reverse"} 0.0
+http_request_duration_seconds_bucket{le="0.01",method="POST",path="/transfers/{transfer_id}/reverse"} 0.0
+http_request_duration_seconds_bucket{le="0.025",method="POST",path="/transfers/{transfer_id}/reverse"} 0.0
+http_request_duration_seconds_bucket{le="0.05",method="POST",path="/transfers/{transfer_id}/reverse"} 2.0
+http_request_duration_seconds_bucket{le="0.1",method="POST",path="/transfers/{transfer_id}/reverse"} 3.0
+http_request_duration_seconds_bucket{le="0.25",method="POST",path="/transfers/{transfer_id}/reverse"} 3.0
+http_request_duration_seconds_bucket{le="0.5",method="POST",path="/transfers/{transfer_id}/reverse"} 3.0
+http_request_duration_seconds_bucket{le="1.0",method="POST",path="/transfers/{transfer_id}/reverse"} 3.0
+http_request_duration_seconds_bucket{le="2.5",method="POST",path="/transfers/{transfer_id}/reverse"} 10.0
+http_request_duration_seconds_bucket{le="5.0",method="POST",path="/transfers/{transfer_id}/reverse"} 60.0
+http_request_duration_seconds_bucket{le="10.0",method="POST",path="/transfers/{transfer_id}/reverse"} 63.0
+http_request_duration_seconds_bucket{le="30.0",method="POST",path="/transfers/{transfer_id}/reverse"} 63.0
+http_request_duration_seconds_bucket{le="60.0",method="POST",path="/transfers/{transfer_id}/reverse"} 63.0
+http_request_duration_seconds_bucket{le="120.0",method="POST",path="/transfers/{transfer_id}/reverse"} 63.0
+http_request_duration_seconds_bucket{le="+Inf",method="POST",path="/transfers/{transfer_id}/reverse"} 63.0
+http_request_duration_seconds_count{method="POST",path="/transfers/{transfer_id}/reverse"} 63.0
+http_request_duration_seconds_sum{method="POST",path="/transfers/{transfer_id}/reverse"} 204.13731313776225
+# HELP http_request_duration_seconds_created HTTP request latency in seconds
+# TYPE http_request_duration_seconds_created gauge
+http_request_duration_seconds_created{method="HEAD",path="/"} 1.7889602146370456e+09
+http_request_duration_seconds_created{method="GET",path="/healthz"} 1.78896021827313e+09
+http_request_duration_seconds_created{method="GET",path="/"} 1.7889602191860445e+09
+http_request_duration_seconds_created{method="GET",path="unmatched"} 1.788960233900012e+09
+http_request_duration_seconds_created{method="POST",path="/wallets"} 1.7889602735324433e+09
+http_request_duration_seconds_created{method="POST",path="/wallets/{wallet_id}/deposit"} 1.7889602770635555e+09
+http_request_duration_seconds_created{method="POST",path="/transfers"} 1.7889602808356526e+09
+http_request_duration_seconds_created{method="GET",path="/wallets/{wallet_id}"} 1.7889602819732819e+09
+http_request_duration_seconds_created{method="GET",path="/transfers/{transfer_id}"} 1.7889602824650922e+09
+http_request_duration_seconds_created{method="POST",path="/transfers/{transfer_id}/reverse"} 1.7889603236327815e+09
+# HELP wallets_created_total Wallets newly created
+# TYPE wallets_created_total counter
+wallets_created_total 14.0
+# HELP wallets_created_created Wallets newly created
+# TYPE wallets_created_created gauge
+wallets_created_created 1.78896021184229e+09
+# HELP deposits_total Deposits (external mint) applied
+# TYPE deposits_total counter
+deposits_total 12.0
+# HELP deposits_created Deposits (external mint) applied
+# TYPE deposits_created gauge
+deposits_created 1.7889602118423011e+09
+# HELP transfers_created_total Transfers completed
+# TYPE transfers_created_total counter
+transfers_created_total 343.0
+# HELP transfers_created_created Transfers completed
+# TYPE transfers_created_created gauge
+transfers_created_created 1.7889602118423095e+09
+# HELP transfers_declined_insufficient_funds_total Transfers/reversals declined for insufficient funds
+# TYPE transfers_declined_insufficient_funds_total counter
+transfers_declined_insufficient_funds_total 45.0
+# HELP transfers_declined_insufficient_funds_created Transfers/reversals declined for insufficient funds
+# TYPE transfers_declined_insufficient_funds_created gauge
+transfers_declined_insufficient_funds_created 1.788960211842319e+09
+# HELP idempotent_replays_total Idempotent replays served from the stored result
+# TYPE idempotent_replays_total counter
+idempotent_replays_total 51.0
+# HELP idempotent_replays_created Idempotent replays served from the stored result
+# TYPE idempotent_replays_created gauge
+idempotent_replays_created 1.7889602118423269e+09
+# HELP reversals_created_total Reversals completed
+# TYPE reversals_created_total counter
+reversals_created_total 21.0
+# HELP reversals_created_created Reversals completed
+# TYPE reversals_created_created gauge
+reversals_created_created 1.788960211842334e+09

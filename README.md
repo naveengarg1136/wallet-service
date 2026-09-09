@@ -3,7 +3,7 @@
 FastAPI + SQLAlchemy/asyncpg + PostgreSQL. Money is strictly integer paise;
 transactional database constraints and ordered row locks enforce correctness.
 
-- Live API: https://wallet-service-rxfw.onrender.com
+- Live API: https://wallet-service-sg.onrender.com
 - Repository: https://github.com/naveengarg1136/wallet-service
 - Public structured log capture: [evidence/local/service.jsonl](evidence/local/service.jsonl)
 - Verification status and metrics: [evidence/README.md](evidence/README.md)
@@ -14,9 +14,12 @@ The checked-in log capture is from the local PostgreSQL validation run, not
 Render production. CI publishes its own sanitized logs and downloadable evidence
 on every run. A private Render dashboard URL is not a public log link.
 
-The Oregon deployment passed wallet creation and same-key replay checks but
-failed the latest contention run with gateway 502s. Local and container CI passes
-do not establish a passing live deployment; Singapore verification is pending.
+The Singapore deployment passed all 31 live checks on 2026-09-09 at revision
+`199342b`: 599 requests, zero server/transport errors, no retries, and client p99
+7170.194 ms. [Live capture](evidence/live-singapore-20260909-185430/summary.json).
+This is a measured correctness pass, not a latency guarantee. The earlier Oregon
+deployment failed contention with gateway 502s; that failure is not a live pass.
+Matching Render application logs for the Singapore run still require export.
 
 ## Run and Test
 
@@ -45,7 +48,7 @@ automatic HTTP retries or filtered-out failing responses. The Bash wrapper
 Test the deployed service after `/healthz` responds successfully:
 
 ```bash
-python scripts/burst.py https://wallet-service-rxfw.onrender.com --evidence-dir evidence/live
+python scripts/burst.py https://wallet-service-sg.onrender.com --evidence-dir evidence/live-retest
 ```
 
 For development without Docker, create a virtual environment, install

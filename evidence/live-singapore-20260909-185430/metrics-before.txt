@@ -1,0 +1,160 @@
+# HELP python_gc_objects_collected_total Objects collected during gc
+# TYPE python_gc_objects_collected_total counter
+python_gc_objects_collected_total{generation="0"} 2685.0
+python_gc_objects_collected_total{generation="1"} 3945.0
+python_gc_objects_collected_total{generation="2"} 0.0
+# HELP python_gc_objects_uncollectable_total Uncollectable objects found during GC
+# TYPE python_gc_objects_uncollectable_total counter
+python_gc_objects_uncollectable_total{generation="0"} 0.0
+python_gc_objects_uncollectable_total{generation="1"} 0.0
+python_gc_objects_uncollectable_total{generation="2"} 0.0
+# HELP python_gc_collections_total Number of times this generation was collected
+# TYPE python_gc_collections_total counter
+python_gc_collections_total{generation="0"} 190.0
+python_gc_collections_total{generation="1"} 17.0
+python_gc_collections_total{generation="2"} 1.0
+# HELP python_info Python platform information
+# TYPE python_info gauge
+python_info{implementation="CPython",major="3",minor="12",patchlevel="14",version="3.12.14"} 1.0
+# HELP process_virtual_memory_bytes Virtual memory size in bytes.
+# TYPE process_virtual_memory_bytes gauge
+process_virtual_memory_bytes 3.32599296e+08
+# HELP process_resident_memory_bytes Resident memory size in bytes.
+# TYPE process_resident_memory_bytes gauge
+process_resident_memory_bytes 8.470528e+07
+# HELP process_start_time_seconds Start time of the process since unix epoch in seconds.
+# TYPE process_start_time_seconds gauge
+process_start_time_seconds 1.78896020015e+09
+# HELP process_cpu_seconds_total Total user and system CPU time spent in seconds.
+# TYPE process_cpu_seconds_total counter
+process_cpu_seconds_total 2.06
+# HELP process_open_fds Number of open file descriptors.
+# TYPE process_open_fds gauge
+process_open_fds 19.0
+# HELP process_max_fds Maximum number of open file descriptors.
+# TYPE process_max_fds gauge
+process_max_fds 1.048576e+06
+# HELP http_requests_total Total HTTP requests
+# TYPE http_requests_total counter
+http_requests_total{method="HEAD",path="/",status="405"} 1.0
+http_requests_total{method="GET",path="/healthz",status="200"} 15.0
+http_requests_total{method="GET",path="/",status="200"} 3.0
+http_requests_total{method="GET",path="unmatched",status="404"} 1.0
+# HELP http_requests_created Total HTTP requests
+# TYPE http_requests_created gauge
+http_requests_created{method="HEAD",path="/",status="405"} 1.7889602146370084e+09
+http_requests_created{method="GET",path="/healthz",status="200"} 1.7889602182730916e+09
+http_requests_created{method="GET",path="/",status="200"} 1.7889602191860127e+09
+http_requests_created{method="GET",path="unmatched",status="404"} 1.788960233899981e+09
+# HELP http_request_duration_seconds HTTP request latency in seconds
+# TYPE http_request_duration_seconds histogram
+http_request_duration_seconds_bucket{le="0.005",method="HEAD",path="/"} 1.0
+http_request_duration_seconds_bucket{le="0.01",method="HEAD",path="/"} 1.0
+http_request_duration_seconds_bucket{le="0.025",method="HEAD",path="/"} 1.0
+http_request_duration_seconds_bucket{le="0.05",method="HEAD",path="/"} 1.0
+http_request_duration_seconds_bucket{le="0.1",method="HEAD",path="/"} 1.0
+http_request_duration_seconds_bucket{le="0.25",method="HEAD",path="/"} 1.0
+http_request_duration_seconds_bucket{le="0.5",method="HEAD",path="/"} 1.0
+http_request_duration_seconds_bucket{le="1.0",method="HEAD",path="/"} 1.0
+http_request_duration_seconds_bucket{le="2.5",method="HEAD",path="/"} 1.0
+http_request_duration_seconds_bucket{le="5.0",method="HEAD",path="/"} 1.0
+http_request_duration_seconds_bucket{le="10.0",method="HEAD",path="/"} 1.0
+http_request_duration_seconds_bucket{le="30.0",method="HEAD",path="/"} 1.0
+http_request_duration_seconds_bucket{le="60.0",method="HEAD",path="/"} 1.0
+http_request_duration_seconds_bucket{le="120.0",method="HEAD",path="/"} 1.0
+http_request_duration_seconds_bucket{le="+Inf",method="HEAD",path="/"} 1.0
+http_request_duration_seconds_count{method="HEAD",path="/"} 1.0
+http_request_duration_seconds_sum{method="HEAD",path="/"} 0.0005461920518428087
+http_request_duration_seconds_bucket{le="0.005",method="GET",path="/healthz"} 0.0
+http_request_duration_seconds_bucket{le="0.01",method="GET",path="/healthz"} 1.0
+http_request_duration_seconds_bucket{le="0.025",method="GET",path="/healthz"} 14.0
+http_request_duration_seconds_bucket{le="0.05",method="GET",path="/healthz"} 14.0
+http_request_duration_seconds_bucket{le="0.1",method="GET",path="/healthz"} 14.0
+http_request_duration_seconds_bucket{le="0.25",method="GET",path="/healthz"} 14.0
+http_request_duration_seconds_bucket{le="0.5",method="GET",path="/healthz"} 15.0
+http_request_duration_seconds_bucket{le="1.0",method="GET",path="/healthz"} 15.0
+http_request_duration_seconds_bucket{le="2.5",method="GET",path="/healthz"} 15.0
+http_request_duration_seconds_bucket{le="5.0",method="GET",path="/healthz"} 15.0
+http_request_duration_seconds_bucket{le="10.0",method="GET",path="/healthz"} 15.0
+http_request_duration_seconds_bucket{le="30.0",method="GET",path="/healthz"} 15.0
+http_request_duration_seconds_bucket{le="60.0",method="GET",path="/healthz"} 15.0
+http_request_duration_seconds_bucket{le="120.0",method="GET",path="/healthz"} 15.0
+http_request_duration_seconds_bucket{le="+Inf",method="GET",path="/healthz"} 15.0
+http_request_duration_seconds_count{method="GET",path="/healthz"} 15.0
+http_request_duration_seconds_sum{method="GET",path="/healthz"} 0.460332719841972
+http_request_duration_seconds_bucket{le="0.005",method="GET",path="/"} 3.0
+http_request_duration_seconds_bucket{le="0.01",method="GET",path="/"} 3.0
+http_request_duration_seconds_bucket{le="0.025",method="GET",path="/"} 3.0
+http_request_duration_seconds_bucket{le="0.05",method="GET",path="/"} 3.0
+http_request_duration_seconds_bucket{le="0.1",method="GET",path="/"} 3.0
+http_request_duration_seconds_bucket{le="0.25",method="GET",path="/"} 3.0
+http_request_duration_seconds_bucket{le="0.5",method="GET",path="/"} 3.0
+http_request_duration_seconds_bucket{le="1.0",method="GET",path="/"} 3.0
+http_request_duration_seconds_bucket{le="2.5",method="GET",path="/"} 3.0
+http_request_duration_seconds_bucket{le="5.0",method="GET",path="/"} 3.0
+http_request_duration_seconds_bucket{le="10.0",method="GET",path="/"} 3.0
+http_request_duration_seconds_bucket{le="30.0",method="GET",path="/"} 3.0
+http_request_duration_seconds_bucket{le="60.0",method="GET",path="/"} 3.0
+http_request_duration_seconds_bucket{le="120.0",method="GET",path="/"} 3.0
+http_request_duration_seconds_bucket{le="+Inf",method="GET",path="/"} 3.0
+http_request_duration_seconds_count{method="GET",path="/"} 3.0
+http_request_duration_seconds_sum{method="GET",path="/"} 0.0025724460138008
+http_request_duration_seconds_bucket{le="0.005",method="GET",path="unmatched"} 1.0
+http_request_duration_seconds_bucket{le="0.01",method="GET",path="unmatched"} 1.0
+http_request_duration_seconds_bucket{le="0.025",method="GET",path="unmatched"} 1.0
+http_request_duration_seconds_bucket{le="0.05",method="GET",path="unmatched"} 1.0
+http_request_duration_seconds_bucket{le="0.1",method="GET",path="unmatched"} 1.0
+http_request_duration_seconds_bucket{le="0.25",method="GET",path="unmatched"} 1.0
+http_request_duration_seconds_bucket{le="0.5",method="GET",path="unmatched"} 1.0
+http_request_duration_seconds_bucket{le="1.0",method="GET",path="unmatched"} 1.0
+http_request_duration_seconds_bucket{le="2.5",method="GET",path="unmatched"} 1.0
+http_request_duration_seconds_bucket{le="5.0",method="GET",path="unmatched"} 1.0
+http_request_duration_seconds_bucket{le="10.0",method="GET",path="unmatched"} 1.0
+http_request_duration_seconds_bucket{le="30.0",method="GET",path="unmatched"} 1.0
+http_request_duration_seconds_bucket{le="60.0",method="GET",path="unmatched"} 1.0
+http_request_duration_seconds_bucket{le="120.0",method="GET",path="unmatched"} 1.0
+http_request_duration_seconds_bucket{le="+Inf",method="GET",path="unmatched"} 1.0
+http_request_duration_seconds_count{method="GET",path="unmatched"} 1.0
+http_request_duration_seconds_sum{method="GET",path="unmatched"} 0.0007219850085675716
+# HELP http_request_duration_seconds_created HTTP request latency in seconds
+# TYPE http_request_duration_seconds_created gauge
+http_request_duration_seconds_created{method="HEAD",path="/"} 1.7889602146370456e+09
+http_request_duration_seconds_created{method="GET",path="/healthz"} 1.78896021827313e+09
+http_request_duration_seconds_created{method="GET",path="/"} 1.7889602191860445e+09
+http_request_duration_seconds_created{method="GET",path="unmatched"} 1.788960233900012e+09
+# HELP wallets_created_total Wallets newly created
+# TYPE wallets_created_total counter
+wallets_created_total 0.0
+# HELP wallets_created_created Wallets newly created
+# TYPE wallets_created_created gauge
+wallets_created_created 1.78896021184229e+09
+# HELP deposits_total Deposits (external mint) applied
+# TYPE deposits_total counter
+deposits_total 0.0
+# HELP deposits_created Deposits (external mint) applied
+# TYPE deposits_created gauge
+deposits_created 1.7889602118423011e+09
+# HELP transfers_created_total Transfers completed
+# TYPE transfers_created_total counter
+transfers_created_total 0.0
+# HELP transfers_created_created Transfers completed
+# TYPE transfers_created_created gauge
+transfers_created_created 1.7889602118423095e+09
+# HELP transfers_declined_insufficient_funds_total Transfers/reversals declined for insufficient funds
+# TYPE transfers_declined_insufficient_funds_total counter
+transfers_declined_insufficient_funds_total 0.0
+# HELP transfers_declined_insufficient_funds_created Transfers/reversals declined for insufficient funds
+# TYPE transfers_declined_insufficient_funds_created gauge
+transfers_declined_insufficient_funds_created 1.788960211842319e+09
+# HELP idempotent_replays_total Idempotent replays served from the stored result
+# TYPE idempotent_replays_total counter
+idempotent_replays_total 0.0
+# HELP idempotent_replays_created Idempotent replays served from the stored result
+# TYPE idempotent_replays_created gauge
+idempotent_replays_created 1.7889602118423269e+09
+# HELP reversals_created_total Reversals completed
+# TYPE reversals_created_total counter
+reversals_created_total 0.0
+# HELP reversals_created_created Reversals completed
+# TYPE reversals_created_created gauge
+reversals_created_created 1.788960211842334e+09
