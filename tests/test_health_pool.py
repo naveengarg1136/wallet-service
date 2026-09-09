@@ -5,6 +5,7 @@ from contextlib import AsyncExitStack
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from fastapi import HTTPException
+from sqlalchemy.engine import make_url
 from sqlalchemy.exc import TimeoutError as PoolTimeoutError
 
 from app import db
@@ -29,7 +30,8 @@ class HealthPoolTests(unittest.IsolatedAsyncioTestCase):
 
     @unittest.skipUnless(os.environ.get("TEST_DATABASE_URL"), "requires disposable PostgreSQL")
     async def test_real_database_probe_survives_exhausted_request_pool(self):
-        self.assertEqual(str(db.engine.url), os.environ["TEST_DATABASE_URL"])
+        self.assertTrue(db.engine.url == make_url(os.environ["TEST_DATABASE_URL"]),
+                        "The test engine must target the disposable database")
         try:
             async with AsyncExitStack() as stack:
                 for _ in range(15):
